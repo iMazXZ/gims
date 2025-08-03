@@ -1,109 +1,75 @@
-import React from 'react';
-import { Clock, Star, Film, Tv, Trash2 } from 'lucide-react';
-import { HistoryItem } from '../types';
+import React from "react";
+import { Link } from "react-router-dom";
+import { Clock, Trash2, Film, Tv } from "lucide-react";
+import { HistoryItem } from "../types";
 
 interface HistoryPanelProps {
   history: HistoryItem[];
-  onItemClick: (item: HistoryItem) => void;
   onClearHistory: () => void;
 }
 
-const HistoryPanel: React.FC<HistoryPanelProps> = ({ history, onItemClick, onClearHistory }) => {
-  const formatDate = (dateString: string) => {
-    const date = new Date(dateString);
-    const now = new Date();
-    const diffInHours = Math.floor((now.getTime() - date.getTime()) / (1000 * 60 * 60));
-    
-    if (diffInHours < 1) return 'Just now';
-    if (diffInHours < 24) return `${diffInHours}h ago`;
-    if (diffInHours < 48) return 'Yesterday';
-    return date.toLocaleDateString();
-  };
-
+const HistoryPanel: React.FC<HistoryPanelProps> = ({
+  history,
+  onClearHistory,
+}) => {
   if (history.length === 0) {
     return (
-      <div className="text-center py-12">
-        <Clock size={48} className="mx-auto text-gray-400 mb-4" />
-        <h3 className="text-xl font-semibold text-white mb-2">No History Yet</h3>
-        <p className="text-gray-300">
-          Your recently viewed movies and TV shows will appear here.
-        </p>
+      <div className="text-center py-20 text-brand-text-secondary">
+        <Clock size={64} className="mx-auto mb-4" />
+        <h2 className="text-2xl font-bold text-brand-text-primary">
+          No History Yet
+        </h2>
+        <p>Your recently viewed items will appear here.</p>
       </div>
     );
   }
 
   return (
-    <div className="w-full">
-      <div className="flex items-center justify-between mb-6">
-        <h2 className="text-2xl font-bold text-white flex items-center gap-2">
-          <Clock size={24} />
+    <section className="animate-fade-in-up">
+      <div className="flex justify-between items-center mb-6">
+        <h1 className="text-4xl font-display tracking-wider">
           Recently Viewed
-        </h2>
+        </h1>
         <button
           onClick={onClearHistory}
-          className="flex items-center gap-2 px-4 py-2 bg-red-500/20 text-red-300 hover:bg-red-500/30 rounded-lg transition-colors duration-200"
+          className="flex items-center gap-2 px-4 py-2 text-sm bg-red-500/10 text-red-400 hover:bg-red-500/20 rounded-lg transition-colors"
         >
           <Trash2 size={16} />
           Clear All
         </button>
       </div>
-      
-      <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4 gap-4">
+      <div className="grid grid-cols-2 sm:grid-cols-3 md:grid-cols-4 lg:grid-cols-5 xl:grid-cols-6 gap-4">
         {history.map((item) => (
-          <div
-            key={`${item.id}-${item.type}-${item.viewedAt}`}
-            onClick={() => onItemClick(item)}
-            className="group bg-white/10 backdrop-blur-sm rounded-xl overflow-hidden cursor-pointer transition-all duration-300 hover:bg-white/20 hover:scale-105 hover:shadow-xl border border-white/10"
+          <Link
+            to={`/${item.type}/${item.id}`}
+            key={`${item.id}-${item.viewedAt}`}
+            className="group cursor-pointer"
           >
-            <div className="relative aspect-[2/3] overflow-hidden">
+            <div className="relative aspect-[2/3] bg-brand-surface rounded-lg overflow-hidden border border-brand-border transition-all duration-300 group-hover:scale-105 group-hover:shadow-2xl group-hover:shadow-brand-primary/20">
               {item.poster_path ? (
                 <img
-                  src={`https://image.tmdb.org/t/p/w300${item.poster_path}`}
+                  src={`https://image.tmdb.org/t/p/w500${item.poster_path}`}
                   alt={item.title}
-                  className="w-full h-full object-cover transition-transform duration-300 group-hover:scale-110"
+                  className="w-full h-full object-cover"
+                  loading="lazy"
                 />
               ) : (
-                <div className="w-full h-full bg-gradient-to-br from-purple-500/20 to-pink-500/20 flex items-center justify-center">
-                  {item.type === 'movie' ? (
-                    <Film size={48} className="text-white/50" />
+                <div className="w-full h-full flex items-center justify-center text-brand-text-secondary">
+                  {item.type === "movie" ? (
+                    <Film size={48} />
                   ) : (
-                    <Tv size={48} className="text-white/50" />
+                    <Tv size={48} />
                   )}
                 </div>
               )}
-              <div className="absolute inset-0 bg-gradient-to-t from-black/60 via-transparent to-transparent" />
-              <div className="absolute top-2 right-2">
-                <div className="bg-black/50 backdrop-blur-sm rounded-full p-1">
-                  {item.type === 'movie' ? (
-                    <Film size={16} className="text-white" />
-                  ) : (
-                    <Tv size={16} className="text-white" />
-                  )}
-                </div>
-              </div>
-              {item.vote_average && (
-                <div className="absolute top-2 left-2 flex items-center gap-1 bg-black/50 backdrop-blur-sm rounded-full px-2 py-1">
-                  <Star size={12} className="text-yellow-400 fill-current" />
-                  <span className="text-white text-xs font-semibold">
-                    {item.vote_average.toFixed(1)}
-                  </span>
-                </div>
-              )}
             </div>
-            
-            <div className="p-4">
-              <h3 className="text-white font-semibold text-sm mb-1 line-clamp-2 group-hover:text-purple-200 transition-colors">
-                {item.title}
-              </h3>
-              <div className="flex items-center justify-between text-xs text-gray-400">
-                <span className="capitalize">{item.type}</span>
-                <span>{formatDate(item.viewedAt)}</span>
-              </div>
-            </div>
-          </div>
+            <h3 className="mt-2 font-semibold text-brand-text-primary truncate">
+              {item.title}
+            </h3>
+          </Link>
         ))}
       </div>
-    </div>
+    </section>
   );
 };
 

@@ -1,73 +1,56 @@
-import React from 'react';
-import { Star, Calendar, Film, Tv } from 'lucide-react';
-import { SearchResult } from '../types';
+import React from "react";
+import { Link } from "react-router-dom";
+import { Film, Tv, Calendar } from "lucide-react";
+import { SearchResult } from "../types";
 
 interface SearchResultsProps {
   results: SearchResult[];
-  onSelectResult: (id: number, type: 'movie' | 'tv') => void;
 }
 
-const SearchResults: React.FC<SearchResultsProps> = ({ results, onSelectResult }) => {
+const SearchResults: React.FC<SearchResultsProps> = ({ results }) => {
+  if (results.length === 0) {
+    return (
+      <p className="text-center text-brand-text-secondary mt-10">
+        No results found.
+      </p>
+    );
+  }
   return (
-    <div className="w-full mb-8">
-      <h2 className="text-2xl font-bold mb-6 text-white flex items-center gap-2">
-        <span className="bg-gradient-to-r from-purple-400 to-pink-400 bg-clip-text text-transparent">
-          Search Results
-        </span>
-        <span className="text-sm font-normal text-gray-300">({results.length} found)</span>
-      </h2>
-      
-      <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4 gap-4">
-        {results.map((result) => (
-          <div
-            key={result.id}
-            className="group bg-white/10 backdrop-blur-sm rounded-xl overflow-hidden cursor-pointer transition-all duration-300 hover:bg-white/20 hover:scale-105 hover:shadow-xl border border-white/10"
-            onClick={() => onSelectResult(result.id, result.media_type as 'movie' | 'tv')}
-          >
-            <div className="relative aspect-[2/3] overflow-hidden">
-              {result.poster_path ? (
+    <section className="animate-fade-in-up">
+      <div className="grid grid-cols-2 sm:grid-cols-3 md:grid-cols-4 lg:grid-cols-5 xl:grid-cols-6 gap-4">
+        {results
+          .filter((r) => r.poster_path)
+          .map((result) => (
+            <Link
+              to={`/${result.media_type}/${result.id}`}
+              key={result.id}
+              className="group cursor-pointer"
+            >
+              <div className="relative aspect-[2/3] bg-brand-surface rounded-lg overflow-hidden border border-brand-border transition-all duration-300 group-hover:scale-105 group-hover:shadow-2xl group-hover:shadow-brand-primary/20">
                 <img
-                  src={`https://image.tmdb.org/t/p/w300${result.poster_path}`}
+                  src={`https://image.tmdb.org/t/p/w500${result.poster_path}`}
                   alt={result.title || result.name}
-                  className="w-full h-full object-cover transition-transform duration-300 group-hover:scale-110"
+                  className="w-full h-full object-cover"
+                  loading="lazy"
                 />
-              ) : (
-                <div className="w-full h-full bg-gradient-to-br from-purple-500/20 to-pink-500/20 flex items-center justify-center">
-                  {result.media_type === 'movie' ? (
-                    <Film size={48} className="text-white/50" />
-                  ) : (
-                    <Tv size={48} className="text-white/50" />
-                  )}
-                </div>
-              )}
-              <div className="absolute inset-0 bg-gradient-to-t from-black/60 via-transparent to-transparent" />
-              <div className="absolute top-2 right-2">
-                <div className="bg-black/50 backdrop-blur-sm rounded-full p-1">
-                  {result.media_type === 'movie' ? (
-                    <Film size={16} className="text-white" />
-                  ) : (
-                    <Tv size={16} className="text-white" />
-                  )}
+              </div>
+              <div className="mt-2">
+                <h3 className="font-semibold text-brand-text-primary truncate">
+                  {result.title || result.name}
+                </h3>
+                <div className="flex items-center text-sm text-brand-text-secondary gap-2">
+                  <Calendar size={14} />
+                  <span>
+                    {(result.release_date || result.first_air_date)?.split(
+                      "-"
+                    )[0] || "N/A"}
+                  </span>
                 </div>
               </div>
-            </div>
-            
-            <div className="p-4">
-              <h3 className="text-white font-semibold text-sm mb-2 line-clamp-2 group-hover:text-purple-200 transition-colors">
-                {result.title || result.name}
-              </h3>
-              <div className="flex items-center justify-between text-xs text-gray-400">
-                <span className="capitalize">{result.media_type}</span>
-                <div className="flex items-center gap-1">
-                  <Calendar size={12} />
-                  <span>{result.release_date || result.first_air_date}</span>
-                </div>
-              </div>
-            </div>
-          </div>
-        ))}
+            </Link>
+          ))}
       </div>
-    </div>
+    </section>
   );
 };
 

@@ -1,252 +1,257 @@
-import React from 'react';
-import { Star, Calendar, Clock, Copy, Film, Tv, Hash, Award, Users, Languages } from 'lucide-react';
-import { MediaDetails } from '../types';
-import ImageGallery from './ImageGallery';
+import React, { useState, useEffect } from "react";
+import { Link } from "react-router-dom";
+import { MediaDetails } from "../types";
+import {
+  Star,
+  Calendar,
+  Clock,
+  Users,
+  PlayCircle,
+  Globe,
+  Copy,
+  Check,
+  Hash,
+} from "lucide-react";
+import TrailerModal from "./TrailerModal";
+import ImageGallery from "./ImageGallery";
 
-interface DetailCardProps {
-  details: MediaDetails;
-}
+const DetailCard: React.FC<{ details: MediaDetails }> = ({ details }) => {
+  const [isTrailerOpen, setTrailerOpen] = useState(false);
+  const [isCopied, setIsCopied] = useState(false);
+  const isMovie = "title" in details;
+  const trailer = details.videos?.results.find(
+    (v) => v.type === "Trailer" && v.site === "YouTube"
+  );
+  const providers = details["watch/providers"]?.results.ID;
 
-const DetailCard: React.FC<DetailCardProps> = ({ details }) => {
-  const isMovie = 'title' in details;
+  useEffect(() => {
+    const savedHistory = localStorage.getItem("movieTvHistory");
+    const history = savedHistory ? JSON.parse(savedHistory) : [];
+    const newItem = {
+      id: details.id,
+      title: isMovie ? details.title : details.name,
+      type: isMovie ? "movie" : "tv",
+      poster_path: details.poster_path,
+      viewedAt: new Date().toISOString(),
+      vote_average: details.vote_average,
+    };
+    const newHistory = [
+      newItem,
+      ...history.filter((item: any) => item.id !== newItem.id),
+    ].slice(0, 20);
+    localStorage.setItem("movieTvHistory", JSON.stringify(newHistory));
+  }, [details, isMovie]);
 
-  const translateText = async (text: string): Promise<string> => {
-    try {
-      // Using MyMemory Translation API (free, no API key required)
-      const response = await fetch(
-        `https://api.mymemory.translated.net/get?q=${encodeURIComponent(text)}&langpair=en|id`
-      );
-      const data = await response.json();
-      
-      if (data.responseStatus === 200 && data.responseData.translatedText) {
-        return data.responseData.translatedText;
-      }
-      
-      // Fallback: try Google Translate API alternative
-      const fallbackResponse = await fetch(
-        `https://translate.googleapis.com/translate_a/single?client=gtx&sl=en&tl=id&dt=t&q=${encodeURIComponent(text)}`
-      );
-      const fallbackData = await fallbackResponse.json();
-      
-      if (fallbackData && fallbackData[0] && fallbackData[0][0]) {
-        return fallbackData[0][0][0];
-      }
-      
-      return text; // Return original if translation fails
-    } catch (error) {
-      console.error('Translation failed:', error);
-      return text; // Return original text if translation fails
+  const copyDetails = () => {
+    // Menyiapkan daftar pemeran untuk disalin
+    const castInfo = details.credits?.cast
+      .slice(0, 5) // Ambil 5 pemeran utama
+      .map((actor) => `${actor.name} as ${actor.character}`)
+      .join("\n"); // Pisahkan dengan baris baru
+
+    const title = (isMovie ? details.title : details.name) || "";
+    const detailsText = `
+    ${title.toUpperCase()} (${
+      (details.release_date || details.first_air_date)?.split("-")[0] || "N/A"
+    })
+
+Synopsis: ${details.overview || "N/A"}
+Release Year: ${
+      (details.release_date || details.first_air_date)?.split("-")[0] || "N/A"
     }
-  };
-
-  const copyDetails = async () => {
-    // Show loading notification
-    const loadingNotification = document.createElement('div');
-    loadingNotification.className = 'fixed top-4 right-4 bg-blue-500 text-white px-4 py-2 rounded-lg shadow-lg z-50 transition-opacity duration-300 flex items-center gap-2';
-    loadingNotification.innerHTML = `
-      <div class="animate-spin rounded-full h-4 w-4 border-b-2 border-white"></div>
-      <span>Translating to Bahasa Indonesia...</span>
-    `;
-    document.body.appendChild(loadingNotification);
-
-    try {
-      // Translate the synopsis to Bahasa Indonesia
-      const translatedSynopsis = details.overview ? await translateText(details.overview) : 'N/A';
-      
-      const detailsText = `
-${isMovie ? 'Film' : 'Acara TV'}: ${isMovie ? details.title : details.name}
-Sinopsis: ${translatedSynopsis}
-${isMovie ? 'Tanggal Rilis' : 'Tanggal Tayang Perdana'}: ${isMovie ? details.release_date : details.first_air_date}
-${isMovie && details.runtime ? `Durasi: ${details.runtime} menit` : ''}
-Pemeran: ${details.cast ? details.cast.map(actor => actor.name).join(', ') : 'N/A'}
-Rating: ${details.vote_average ? details.vote_average.toFixed(1) + '/10' : 'N/A'}
-      `.trim();
-
-      await navigator.clipboard.writeText(detailsText);
-      
-      // Remove loading notification
-      document.body.removeChild(loadingNotification);
-      
-      // Show success notification
-      const successNotification = document.createElement('div');
-      successNotification.className = 'fixed top-4 right-4 bg-green-500 text-white px-4 py-2 rounded-lg shadow-lg z-50 transition-opacity duration-300 flex items-center gap-2';
-      successNotification.innerHTML = `
-        <svg class="w-4 h-4" fill="currentColor" viewBox="0 0 20 20">
-          <path fill-rule="evenodd" d="M16.707 5.293a1 1 0 010 1.414l-8 8a1 1 0 01-1.414 0l-4-4a1 1 0 011.414-1.414L8 12.586l7.293-7.293a1 1 0 011.414 0z" clip-rule="evenodd"></path>
-        </svg>
-        <span>Detail berhasil disalin dalam Bahasa Indonesia!</span>
-      `;
-      document.body.appendChild(successNotification);
-      
-      setTimeout(() => {
-        successNotification.style.opacity = '0';
-        setTimeout(() => {
-          if (document.body.contains(successNotification)) {
-            document.body.removeChild(successNotification);
-          }
-        }, 300);
-      }, 3000);
-      
-    } catch (error) {
-      // Remove loading notification
-      if (document.body.contains(loadingNotification)) {
-        document.body.removeChild(loadingNotification);
-      }
-      
-      console.error('Failed to copy details: ', error);
-      
-      // Show error notification
-      const errorNotification = document.createElement('div');
-      errorNotification.className = 'fixed top-4 right-4 bg-red-500 text-white px-4 py-2 rounded-lg shadow-lg z-50 transition-opacity duration-300 flex items-center gap-2';
-      errorNotification.innerHTML = `
-        <svg class="w-4 h-4" fill="currentColor" viewBox="0 0 20 20">
-          <path fill-rule="evenodd" d="M18 10a8 8 0 11-16 0 8 8 0 0116 0zm-7 4a1 1 0 11-2 0 1 1 0 012 0zm-1-9a1 1 0 00-1 1v4a1 1 0 102 0V6a1 1 0 00-1-1z" clip-rule="evenodd"></path>
-        </svg>
-        <span>Gagal menyalin detail. Silakan coba lagi.</span>
-      `;
-      document.body.appendChild(errorNotification);
-      
-      setTimeout(() => {
-        errorNotification.style.opacity = '0';
-        setTimeout(() => {
-          if (document.body.contains(errorNotification)) {
-            document.body.removeChild(errorNotification);
-          }
-        }, 300);
-      }, 3000);
+Rating: ${
+      details.vote_average ? details.vote_average.toFixed(1) + "/10" : "N/A"
     }
+
+Cast:
+${castInfo || "N/A"}
+    `.trim();
+
+    navigator.clipboard.writeText(detailsText).then(() => {
+      setIsCopied(true);
+      setTimeout(() => setIsCopied(false), 2000);
+    });
   };
 
   return (
-    <div className="w-full mt-8">
-      {/* Hero Section */}
-      <div className="relative rounded-3xl overflow-hidden mb-8 shadow-2xl">
-        {details.backdrop_path && (
-          <div className="relative h-96 sm:h-[500px]">
+    <>
+      {/* === HERO SECTION === */}
+      <div className="relative w-full h-[60vh] -mt-10">
+        <div className="absolute inset-0">
+          <img
+            src={`https://image.tmdb.org/t/p/w1280${details.backdrop_path}`}
+            className="w-full h-full object-cover"
+            alt={isMovie ? details.title : details.name}
+          />
+          <div className="absolute inset-0 bg-brand-background/60 backdrop-blur-sm" />
+        </div>
+
+        <div className="relative z-10 h-full flex items-center justify-center text-center p-8">
+          <div className="flex flex-col md:flex-row items-center gap-8">
             <img
-              className="w-full h-full object-cover"
-              src={`https://image.tmdb.org/t/p/w1280${details.backdrop_path}`}
-              alt={isMovie ? details.title : details.name}
+              src={`https://image.tmdb.org/t/p/w500${details.poster_path}`}
+              className="w-40 md:w-52 rounded-lg shadow-2xl border-4 border-brand-border flex-shrink-0"
+              alt="Poster"
             />
-            <div className="absolute inset-0 bg-gradient-to-t from-black via-black/50 to-transparent"></div>
-          </div>
-        )}
-        
-        <div className="absolute bottom-0 left-0 right-0 p-8">
-          <div className="flex flex-col lg:flex-row items-start lg:items-end gap-6">
-            {details.poster_path && (
-              <div className="flex-shrink-0">
-                <img
-                  src={`https://image.tmdb.org/t/p/w300${details.poster_path}`}
-                  alt={isMovie ? details.title : details.name}
-                  className="w-32 sm:w-48 rounded-xl shadow-2xl border-4 border-white/20"
-                />
-              </div>
-            )}
-            
-            <div className="flex-1 min-w-0">
-              <h1 className="text-3xl sm:text-4xl lg:text-5xl font-bold text-white mb-4 leading-tight">
+            <div className="flex flex-col items-center">
+              <h1 className="text-4xl md:text-6xl font-display tracking-wider">
                 {isMovie ? details.title : details.name}
               </h1>
-              
-              <div className="flex flex-wrap items-center gap-4 text-white/90 mb-4">
-                <div className="flex items-center gap-2 bg-white/20 backdrop-blur-sm rounded-full px-3 py-1">
-                  {isMovie ? <Film size={16} /> : <Tv size={16} />}
-                  <span className="text-sm font-medium">{isMovie ? 'Movie' : 'TV Show'}</span>
-                </div>
-                
-                <div className="flex items-center gap-2 bg-white/20 backdrop-blur-sm rounded-full px-3 py-1">
-                  <Hash size={16} />
-                  <span className="text-sm">{details.id}</span>
-                </div>
-                
-                {details.vote_average !== undefined && (
-                  <div className="flex items-center gap-2 bg-yellow-500/20 backdrop-blur-sm rounded-full px-3 py-1">
-                    <Star className="text-yellow-400 fill-current" size={16} />
-                    <span className="text-sm font-semibold">{details.vote_average.toFixed(1)}</span>
-                  </div>
+              <div className="flex flex-wrap justify-center items-center gap-4 mt-2 text-brand-text-secondary">
+                <span className="flex items-center gap-1">
+                  <Calendar size={14} />{" "}
+                  {
+                    (details.release_date || details.first_air_date)?.split(
+                      "-"
+                    )[0]
+                  }
+                </span>
+                {details.runtime && (
+                  <span className="flex items-center gap-1">
+                    <Clock size={14} /> {details.runtime} min
+                  </span>
                 )}
-                
-                <div className="flex items-center gap-2 bg-white/20 backdrop-blur-sm rounded-full px-3 py-1">
-                  <Calendar size={16} />
-                  <span className="text-sm">{isMovie ? details.release_date : details.first_air_date}</span>
-                </div>
-                
-                {isMovie && details.runtime && (
-                  <div className="flex items-center gap-2 bg-white/20 backdrop-blur-sm rounded-full px-3 py-1">
-                    <Clock size={16} />
-                    <span className="text-sm">{details.runtime} min</span>
-                  </div>
-                )}
+                <span className="flex items-center gap-1">
+                  <Hash size={14} /> {details.id}
+                </span>
+                <span className="flex items-center gap-1 text-yellow-400">
+                  <Star size={14} className="fill-current" />{" "}
+                  {details.vote_average?.toFixed(1)}
+                </span>
               </div>
-              
-              <button
-                onClick={copyDetails}
-                className="flex items-center gap-2 bg-gradient-to-r from-purple-600 to-pink-600 hover:from-purple-700 hover:to-pink-700 text-white font-semibold py-3 px-6 rounded-full transition-all duration-300 transform hover:scale-105 shadow-lg"
-              >
-                <Languages size={18} />
-                Salin Detail (Bahasa Indonesia)
-              </button>
+
+              <div className="flex items-center gap-2 mt-2">
+                {trailer && (
+                  <button
+                    onClick={() => setTrailerOpen(true)}
+                    className="flex items-center gap-2 bg-brand-primary px-6 py-3 rounded-lg font-semibold hover:bg-purple-700 transition"
+                  >
+                    <PlayCircle /> Trailer
+                  </button>
+                )}
+                <button
+                  onClick={copyDetails}
+                  title="Copy Details"
+                  className={`flex items-center gap-2 bg-brand-primary px-6 py-3 rounded-lg font-semibold hover:bg-purple-700 transition ${
+                    isCopied
+                      ? "bg-green-500 text-white"
+                      : "bg-brand-surface hover:bg-brand-border text-brand-text-secondary"
+                  }`}
+                >
+                  Copy Detail{" "}
+                  {isCopied ? <Check size={20} /> : <Copy size={20} />}
+                </button>
+              </div>
             </div>
           </div>
         </div>
       </div>
 
-      {/* Content Sections */}
-      <div className="bg-white/10 backdrop-blur-lg rounded-3xl p-8 border border-white/20">
-        {/* Synopsis */}
-        {details.overview && (
-          <div className="mb-8">
-            <h2 className="text-2xl font-bold text-white mb-4 flex items-center gap-2">
-              <Award className="text-purple-400" />
-              Synopsis
-            </h2>
-            <p className="text-gray-200 leading-relaxed text-lg">{details.overview}</p>
-          </div>
-        )}
+      {/* === KONTEN DI BAWAH HERO (DIDESAIN ULANG) === */}
+      <div className="p-8 max-w-5xl mx-auto">
+        {/* Synopsis Section */}
+        <section className="mb-12 text-center">
+          <h2 className="text-3xl font-display tracking-wider mb-4">
+            Synopsis
+          </h2>
+          <p className="text-brand-text-secondary leading-relaxed max-w-3xl mx-auto">
+            {details.overview}
+          </p>
+        </section>
 
-        {/* Cast */}
-        {details.cast && details.cast.length > 0 && (
-          <div className="mb-8">
-            <h2 className="text-2xl font-bold text-white mb-6 flex items-center gap-2">
-              <Users className="text-purple-400" />
+        {/* Cast Section */}
+        {details.credits?.cast && details.credits.cast.length > 0 && (
+          <section className="mb-12">
+            <h2 className="text-3xl font-display tracking-wider mb-6 text-center">
               Cast
             </h2>
-            <div className="grid grid-cols-2 sm:grid-cols-3 md:grid-cols-4 lg:grid-cols-6 gap-4">
-              {details.cast.slice(0, 12).map((actor) => (
-                <div key={actor.id} className="group text-center">
-                  <div className="relative mb-3">
-                    {actor.profile_path ? (
-                      <img
-                        src={`https://image.tmdb.org/t/p/w185${actor.profile_path}`}
-                        alt={actor.name}
-                        className="w-full aspect-square object-cover rounded-xl shadow-lg transition-transform duration-300 group-hover:scale-105"
-                      />
-                    ) : (
-                      <div className="w-full aspect-square bg-gradient-to-br from-purple-500/20 to-pink-500/20 rounded-xl flex items-center justify-center">
-                        <span className="text-2xl font-bold text-white/50">{actor.name.charAt(0)}</span>
-                      </div>
-                    )}
-                    <div className="absolute inset-0 bg-gradient-to-t from-black/60 via-transparent to-transparent rounded-xl opacity-0 group-hover:opacity-100 transition-opacity duration-300"></div>
-                  </div>
-                  <h3 className="text-sm font-semibold text-white mb-1 line-clamp-2">{actor.name}</h3>
-                  <p className="text-xs text-gray-400 line-clamp-2">{actor.character}</p>
-                </div>
+            <div className="flex gap-6 overflow-x-auto pb-4 justify-start md:justify-center">
+              {details.credits.cast.slice(0, 12).map((actor) => (
+                <Link
+                  to={`/person/${actor.id}`}
+                  key={actor.id}
+                  className="flex-shrink-0 w-28 text-center group"
+                >
+                  <img
+                    src={`https://image.tmdb.org/t/p/w185${actor.profile_path}`}
+                    className="w-24 h-24 object-cover rounded-full mx-auto mb-2 border-2 border-brand-border group-hover:border-brand-primary transition"
+                    alt={actor.name}
+                  />
+                  <p className="font-semibold text-sm truncate text-brand-text-primary group-hover:text-brand-primary transition">
+                    {actor.name}
+                  </p>
+                  <p className="text-xs text-brand-text-secondary truncate">
+                    {actor.character}
+                  </p>
+                </Link>
               ))}
             </div>
-          </div>
+          </section>
         )}
 
-        {/* Image Galleries */}
-        {details.backdrops && details.backdrops.length > 0 && (
-          <ImageGallery images={details.backdrops} type="backdrops" />
+        {/* Where to Watch Section */}
+        {providers &&
+          (providers.flatrate || providers.buy || providers.rent) && (
+            <section className="mb-12 text-center">
+              <h2 className="text-3xl font-display tracking-wider flex items-center justify-center gap-2 mb-4">
+                <Globe size={28} /> Where to Watch (ID)
+              </h2>
+              <div className="flex flex-wrap gap-4 justify-center">
+                {providers.flatrate?.map((p) => (
+                  <img
+                    key={p.provider_id}
+                    src={`https://image.tmdb.org/t/p/w92${p.logo_path}`}
+                    alt={p.provider_name}
+                    className="w-14 h-14 rounded-lg"
+                    title={`${p.provider_name} (Stream)`}
+                  />
+                ))}
+                {providers.buy?.map((p) => (
+                  <img
+                    key={p.provider_id}
+                    src={`https://image.tmdb.org/t/p/w92${p.logo_path}`}
+                    alt={p.provider_name}
+                    className="w-14 h-14 rounded-lg"
+                    title={`${p.provider_name} (Buy)`}
+                  />
+                ))}
+                {providers.rent?.map((p) => (
+                  <img
+                    key={p.provider_id}
+                    src={`https://image.tmdb.org/t/p/w92${p.logo_path}`}
+                    alt={p.provider_name}
+                    className="w-14 h-14 rounded-lg"
+                    title={`${p.provider_name} (Rent)`}
+                  />
+                ))}
+              </div>
+            </section>
+          )}
+      </div>
+
+      <div className="px-8 max-w-7xl mx-auto">
+        {details.images?.backdrops && details.images.backdrops.length > 0 && (
+          <ImageGallery
+            images={details.images.backdrops.map((img) => img.file_path)}
+            type="backdrops"
+          />
         )}
-        
-        {details.posters && details.posters.length > 0 && (
-          <ImageGallery images={details.posters} type="posters" />
+        {details.images?.posters && details.images.posters.length > 0 && (
+          <ImageGallery
+            images={details.images.posters.map((img) => img.file_path)}
+            type="posters"
+          />
         )}
       </div>
-    </div>
+
+      {trailer && (
+        <TrailerModal
+          videoKey={trailer.key}
+          isOpen={isTrailerOpen}
+          onClose={() => setTrailerOpen(false)}
+        />
+      )}
+    </>
   );
 };
 
