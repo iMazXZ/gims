@@ -1,20 +1,27 @@
 import React, { useEffect, useState } from "react";
 import { Link, useParams } from "react-router-dom";
 import { MediaDetails } from "../types";
-import { tmdbFetch } from "../api";
+// Impor VIDSRC_EMBED_URL
+import { tmdbFetch, VIDSRC_EMBED_URL } from "../api";
 import EpisodeSelector from "../components/EpisodeSelector";
 import ImageGallery from "../components/ImageGallery";
-import { Calendar, Clock, Star, Bookmark } from "lucide-react";
+// Impor ikon Server, Bookmark, dll.
+import { Calendar, Clock, Star, Bookmark, Server } from "lucide-react";
 import {
   addToWatchlist,
   removeFromWatchlist,
   isInWatchlist,
 } from "../utils/watchlist";
 
+// Tipe untuk server yang tersedia
+type StreamingServer = "moviesapi" | "vidsrc";
+
 const VideoPlayer: React.FC<{ src: string }> = ({ src }) => {
   return (
     <div className="aspect-video bg-black rounded-lg overflow-hidden shadow-2xl shadow-brand-primary/20">
       <iframe
+        // Tambahkan key untuk memaksa iframe memuat ulang saat src berubah
+        key={src}
         src={src}
         className="w-full h-full"
         frameBorder="0"
@@ -34,7 +41,10 @@ const DetailPage: React.FC<{ type: "movie" | "tv" }> = ({ type }) => {
   const [selectedSeason, setSelectedSeason] = useState(1);
   const [selectedEpisode, setSelectedEpisode] = useState(1);
 
-  // Efek untuk memuat detail media dan status watchlist
+  // State baru untuk mengelola server yang dipilih, defaultnya diubah ke 'vidsrc'
+  const [selectedServer, setSelectedServer] =
+    useState<StreamingServer>("vidsrc");
+
   useEffect(() => {
     const fetchAllDetails = async () => {
       if (!id) return;
@@ -46,7 +56,6 @@ const DetailPage: React.FC<{ type: "movie" | "tv" }> = ({ type }) => {
         setDetails(data);
         setInWatchlist(isInWatchlist(Number(id)));
 
-        // Mengingat pilihan terakhir pengguna untuk acara TV
         if (type === "tv") {
           const lastWatched = localStorage.getItem(`last-watched-${id}`);
           if (lastWatched) {
@@ -64,7 +73,6 @@ const DetailPage: React.FC<{ type: "movie" | "tv" }> = ({ type }) => {
     fetchAllDetails();
   }, [id, type]);
 
-  // Efek untuk menyimpan pilihan episode/musim terakhir
   useEffect(() => {
     if (type === "tv" && id) {
       localStorage.setItem(
@@ -89,10 +97,22 @@ const DetailPage: React.FC<{ type: "movie" | "tv" }> = ({ type }) => {
     setInWatchlist(!inWatchlist);
   };
 
-  let videoSrc =
-    type === "movie"
-      ? `https://moviesapi.to/movie/${id}`
-      : `https://moviesapi.to/tv/${id}-${selectedSeason}-${selectedEpisode}`;
+  // Logika untuk membuat URL video berdasarkan server yang dipilih
+  const getVideoSrc = (): string => {
+    if (!id) return "";
+    if (selectedServer === "moviesapi") {
+      return type === "movie"
+        ? `https://moviesapi.to/movie/${id}`
+        : `https://moviesapi.to/tv/${id}-${selectedSeason}-${selectedEpisode}`;
+    }
+    if (selectedServer === "vidsrc") {
+      // Tambahkan parameter ds_lang=id untuk subtitle Bahasa Indonesia
+      return type === "movie"
+        ? `${VIDSRC_EMBED_URL}/movie?tmdb=${id}&ds_lang=id`
+        : `${VIDSRC_EMBED_URL}/tv?tmdb=${id}&season=${selectedSeason}&episode=${selectedEpisode}&ds_lang=id`;
+    }
+    return "";
+  };
 
   if (isLoading) {
     return (
@@ -105,7 +125,7 @@ const DetailPage: React.FC<{ type: "movie" | "tv" }> = ({ type }) => {
   if (!details) {
     return (
       <div className="h-screen flex justify-center items-center">
-        <p>Movie atau TV Show Tidak Tersedia</p>
+        <p>Detail tidak ditemukan.</p>
       </div>
     );
   }
@@ -179,7 +199,37 @@ const DetailPage: React.FC<{ type: "movie" | "tv" }> = ({ type }) => {
             <h2 className="text-3xl font-display tracking-wider mb-4">
               Tonton Sekarang
             </h2>
-            <VideoPlayer src={videoSrc} />
+
+            {/* Komponen Pilihan Server */}
+            <div className="mb-4 p-2 bg-brand-surface rounded-lg flex items-center gap-2">
+              <Server
+                size={18}
+                className="text-brand-text-secondary flex-shrink-0"
+              />
+              <button
+                onClick={() => setSelectedServer("moviesapi")}
+                className={`px-4 py-1.5 text-sm font-semibold rounded-md transition ${
+                  selectedServer === "moviesapi"
+                    ? "bg-brand-primary text-white"
+                    : "hover:bg-brand-border"
+                }`}
+              >
+                Server 1
+              </button>
+              <button
+                onClick={() => setSelectedServer("vidsrc")}
+                className={`px-4 py-1.5 text-sm font-semibold rounded-md transition ${
+                  selectedServer === "vidsrc"
+                    ? "bg-brand-primary text-white"
+                    : "hover:bg-brand-border"
+                }`}
+              >
+                Server 2
+              </button>
+            </div>
+
+            <VideoPlayer src={getVideoSrc()} />
+
             {type === "tv" && details.seasons && (
               <EpisodeSelector
                 seasons={details.seasons}

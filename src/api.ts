@@ -2,6 +2,9 @@ const TMDB_API_KEY = import.meta.env.VITE_TMDB_API_KEY;
 const TMDB_BASE_URL = 'https://api.themoviedb.org/3';
 const MOVIESAPI_BASE_URL = 'https://moviesapi.to/api';
 
+// URL baru untuk server VidSrc
+export const VIDSRC_EMBED_URL = 'https://vidsrc.xyz/embed';
+
 /**
  * Fetch data from The Movie Database (TMDB) API.
  */
@@ -39,11 +42,4 @@ export const moviesApiFetch = async (endpoint: string, params: Record<string, st
     throw new Error(errorData.message || 'MoviesAPI.club request failed');
   }
   return response.json();
-};
-
-/**
- * Fetches season details for a TV show from TMDB.
- */
-export const fetchTvSeason = async (tvId: string, seasonNumber: number) => {
-  return tmdbFetch(`/tv/${tvId}/season/${seasonNumber}`);
 };
