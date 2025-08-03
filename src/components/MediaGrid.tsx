@@ -4,12 +4,11 @@ import { MediaItem } from "../types";
 import { Bookmark, Star } from "lucide-react";
 import { isInWatchlist, toggleWatchlist } from "../utils/watchlist";
 
-interface MediaRowProps {
+interface MediaGridProps {
   items: MediaItem[];
 }
 
-const MediaRow: React.FC<MediaRowProps> = ({ items }) => {
-  // State sederhana untuk memaksa render ulang saat watchlist berubah.
+const MediaGrid: React.FC<MediaGridProps> = ({ items }) => {
   const [, setVersion] = useState(0);
   const forceUpdate = useCallback(() => setVersion((v) => v + 1), []);
 
@@ -17,11 +16,11 @@ const MediaRow: React.FC<MediaRowProps> = ({ items }) => {
     e.preventDefault();
     e.stopPropagation();
     toggleWatchlist(item);
-    forceUpdate(); // Picu render ulang
+    forceUpdate();
   };
 
   return (
-    <div className="flex gap-4 overflow-x-auto pb-4 -mx-4 px-4 md:-mx-8 md:px-8">
+    <div className="grid grid-cols-2 sm:grid-cols-3 md:grid-cols-4 lg:grid-cols-5 xl:grid-cols-6 gap-4 md:gap-6">
       {items.map((item) => {
         const inWatchlist = isInWatchlist(item.id);
         return (
@@ -30,7 +29,7 @@ const MediaRow: React.FC<MediaRowProps> = ({ items }) => {
               item.id
             }`}
             key={item.id}
-            className="flex-shrink-0 w-40 md:w-48 group"
+            className="group cursor-pointer"
           >
             <div className="relative aspect-[2/3] bg-brand-surface rounded-lg overflow-hidden border border-transparent group-hover:border-brand-primary transition-all duration-300 group-hover:-translate-y-2 group-hover:shadow-2xl group-hover:shadow-brand-primary/20">
               <img
@@ -41,8 +40,9 @@ const MediaRow: React.FC<MediaRowProps> = ({ items }) => {
                         item.title || item.name || ""
                       )}`
                 }
-                className="w-full h-full object-cover"
                 alt={item.title || item.name}
+                className="w-full h-full object-cover"
+                loading="lazy"
               />
               <div className="absolute inset-0 bg-gradient-to-t from-black/80 to-transparent"></div>
 
@@ -93,4 +93,4 @@ const MediaRow: React.FC<MediaRowProps> = ({ items }) => {
   );
 };
 
-export default MediaRow;
+export default MediaGrid;

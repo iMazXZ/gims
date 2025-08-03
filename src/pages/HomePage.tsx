@@ -1,65 +1,126 @@
-import React, { useEffect, useState } from "react";
+import React, { useEffect, useState, useCallback } from "react";
+import { Link } from "react-router-dom";
 import { MediaItem, MoviesApiItem } from "../types";
-import { moviesApiFetch, tmdbFetch } from "../api";
-import MediaRow from "../components/MediaRow";
+import { tmdbFetch, moviesApiFetch } from "../api";
 import Hero from "../components/Hero";
+import MediaRow from "../components/MediaRow";
+import { ChevronRight } from "lucide-react";
+
+// Memperbarui nama kategori agar lebih akurat
+const categories = [
+  { title: "Film Populer", endpoint: "/movie/popular", type: "movie" as const },
+  {
+    title: "Update Acara TV Terbaru",
+    endpoint: "/discover/tv",
+    type: "tv" as const,
+    source: "moviesapi",
+  }, // Menandai sumber API
+  {
+    title: "Film Rating Tertinggi",
+    endpoint: "/movie/top_rated",
+    type: "movie" as const,
+  },
+  {
+    title: "Akan Tayang di Bioskop",
+    endpoint: "/movie/upcoming",
+    type: "movie" as const,
+  },
+];
 
 const HomePage: React.FC = () => {
-  const [latestMovies, setLatestMovies] = useState<MediaItem[]>([]);
-  const [latestTvShows, setLatestTvShows] = useState<MediaItem[]>([]);
+  const [trendingItems, setTrendingItems] = useState<MediaItem[]>([]);
+  const [categoryData, setCategoryData] = useState<Record<string, MediaItem[]>>(
+    {}
+  );
   const [isLoading, setIsLoading] = useState(true);
 
-  useEffect(() => {
-    const fetchAndDecorateMedia = async (
+  // Fungsi untuk "menghias" data TMDB dengan info kualitas dari moviesapi.club
+  const decorateWithQuality = useCallback(
+    async (
+      items: MediaItem[],
       mediaType: "movie" | "tv"
     ): Promise<MediaItem[]> => {
-      // 1. Fetch list from moviesapi.club
-      const discoverEndpoint =
-        mediaType === "movie" ? "/discover/movie" : "/discover/tv";
-      const discoverRes = await moviesApiFetch(discoverEndpoint, {
-        direction: "desc",
-        ordering: "upload_date",
+      const qualityPromises = items.map(async (item) => {
+        try {
+          const qualityRes = await moviesApiFetch(`/discover/${mediaType}`, {
+            tmdbid: String(item.id),
+          });
+          const quality = qualityRes.data[0]?.quality || null;
+          return { ...item, quality, media_type: mediaType };
+        } catch (e) {
+          return { ...item, media_type: mediaType };
+        }
       });
+      return Promise.all(qualityPromises);
+    },
+    []
+  );
 
-      // 2. Create a list of promises to fetch details for each item from TMDB
-      const detailPromises = discoverRes.data.map((item: MoviesApiItem) =>
-        tmdbFetch(`/${mediaType}/${item.tmdbid}`).catch((e) => {
-          console.error(
-            `Failed to fetch TMDB details for ${mediaType} ID ${item.tmdbid}`,
-            e
-          );
-          return null; // Return null if a fetch fails
-        })
-      );
-
-      // 3. Wait for all TMDB fetches to complete
-      const tmdbDetails = await Promise.all(detailPromises);
-
-      // 4. Filter out any failed fetches and combine data
-      const decoratedMedia = tmdbDetails.filter(
-        (details) => details !== null
-      ) as MediaItem[];
-
-      return decoratedMedia;
-    };
-
-    const fetchAll = async () => {
+  useEffect(() => {
+    const fetchAllData = async () => {
       try {
-        const [movies, tvShows] = await Promise.all([
-          fetchAndDecorateMedia("movie"),
-          fetchAndDecorateMedia("tv"),
-        ]);
-        setLatestMovies(movies);
-        setLatestTvShows(tvShows);
+        const trendingRes = await tmdbFetch("/trending/all/week");
+        setTrendingItems(trendingRes.results);
+
+        const categoryPromises = categories.map((cat) => {
+          // Logika baru: Cek sumber API untuk setiap kategori
+          if (cat.source === "moviesapi") {
+            // Jika sumbernya moviesapi, ambil dari sana dulu
+            return moviesApiFetch(cat.endpoint, {
+              ordering: "last_upload_date",
+              direction: "desc",
+            });
+          }
+          // Jika tidak, ambil dari TMDB seperti biasa
+          return tmdbFetch(cat.endpoint);
+        });
+
+        const allCategoryRes = await Promise.all(categoryPromises);
+        const decoratedData: Record<string, MediaItem[]> = {};
+
+        for (let i = 0; i < categories.length; i++) {
+          const cat = categories[i];
+          let itemsToDecorate: MediaItem[];
+
+          if (cat.source === "moviesapi") {
+            // Jika dari moviesapi, kita perlu mengambil detail TMDB
+            const moviesApiItems: MoviesApiItem[] = allCategoryRes[i].data;
+            const detailPromises = moviesApiItems
+              .slice(0, 9)
+              .map(async (item) => {
+                try {
+                  const tmdbDetail = await tmdbFetch(
+                    `/${cat.type}/${item.tmdbid}`
+                  );
+                  return {
+                    ...tmdbDetail,
+                    quality: item.quality,
+                    media_type: cat.type,
+                  };
+                } catch {
+                  return null;
+                }
+              });
+            itemsToDecorate = (await Promise.all(detailPromises)).filter(
+              (item): item is MediaItem => item !== null
+            );
+          } else {
+            // Jika dari TMDB, kita hias dengan info kualitas
+            const initialItems = allCategoryRes[i].results.slice(0, 9);
+            itemsToDecorate = await decorateWithQuality(initialItems, cat.type);
+          }
+          decoratedData[cat.title] = itemsToDecorate;
+        }
+
+        setCategoryData(decoratedData);
       } catch (error) {
-        console.error("Failed to fetch and decorate homepage data:", error);
+        console.error("Gagal mengambil data halaman depan:", error);
       } finally {
         setIsLoading(false);
       }
     };
-
-    fetchAll();
-  }, []);
+    fetchAllData();
+  }, [decorateWithQuality]);
 
   if (isLoading) {
     return (
@@ -69,14 +130,26 @@ const HomePage: React.FC = () => {
     );
   }
 
-  const heroItem = latestMovies[0] || latestTvShows[0];
-
   return (
     <div className="animate-fade-in-up">
-      {heroItem && <Hero item={heroItem} />}
+      <Hero items={trendingItems.slice(0, 5)} />
       <div className="p-4 md:p-8 space-y-10">
-        <MediaRow title="Latest Movies" items={latestMovies} />
-        <MediaRow title="Latest TV Shows" items={latestTvShows} />
+        {categories.map((cat) => (
+          <section key={cat.title}>
+            <div className="flex justify-between items-center mb-4">
+              <h2 className="text-2xl font-display tracking-wider">
+                {cat.title}
+              </h2>
+              <Link
+                to={`/discover/${cat.type}`}
+                className="flex items-center gap-1 text-sm text-brand-text-secondary hover:text-brand-primary transition-colors"
+              >
+                Lihat Semua <ChevronRight size={16} />
+              </Link>
+            </div>
+            <MediaRow items={categoryData[cat.title] || []} />
+          </section>
+        ))}
       </div>
     </div>
   );

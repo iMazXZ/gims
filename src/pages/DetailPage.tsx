@@ -4,9 +4,13 @@ import { MediaDetails } from "../types";
 import { tmdbFetch } from "../api";
 import EpisodeSelector from "../components/EpisodeSelector";
 import ImageGallery from "../components/ImageGallery";
-import { Calendar, Clock, Star } from "lucide-react";
+import { Calendar, Clock, Star, Bookmark } from "lucide-react";
+import {
+  addToWatchlist,
+  removeFromWatchlist,
+  isInWatchlist,
+} from "../utils/watchlist";
 
-// Komponen Video Player tetap sama
 const VideoPlayer: React.FC<{ src: string }> = ({ src }) => {
   return (
     <div className="aspect-video bg-black rounded-lg overflow-hidden shadow-2xl shadow-brand-primary/20">
@@ -25,13 +29,14 @@ const DetailPage: React.FC<{ type: "movie" | "tv" }> = ({ type }) => {
   const { id } = useParams<{ id: string }>();
   const [details, setDetails] = useState<MediaDetails | null>(null);
   const [isLoading, setIsLoading] = useState(true);
+  const [inWatchlist, setInWatchlist] = useState(false);
 
-  // State untuk pemutar TV
   const [selectedSeason, setSelectedSeason] = useState(1);
   const [selectedEpisode, setSelectedEpisode] = useState(1);
 
+  // Efek untuk memuat detail media dan status watchlist
   useEffect(() => {
-    const fetchDetails = async () => {
+    const fetchAllDetails = async () => {
       if (!id) return;
       setIsLoading(true);
       try {
@@ -39,26 +44,55 @@ const DetailPage: React.FC<{ type: "movie" | "tv" }> = ({ type }) => {
           append_to_response: "videos,credits,watch/providers,images",
         });
         setDetails(data);
+        setInWatchlist(isInWatchlist(Number(id)));
+
+        // Mengingat pilihan terakhir pengguna untuk acara TV
+        if (type === "tv") {
+          const lastWatched = localStorage.getItem(`last-watched-${id}`);
+          if (lastWatched) {
+            const { season, episode } = JSON.parse(lastWatched);
+            setSelectedSeason(season);
+            setSelectedEpisode(episode);
+          }
+        }
       } catch (error) {
-        console.error("Failed to fetch details:", error);
+        console.error("Gagal mengambil detail:", error);
       } finally {
         setIsLoading(false);
       }
     };
-    fetchDetails();
+    fetchAllDetails();
   }, [id, type]);
+
+  // Efek untuk menyimpan pilihan episode/musim terakhir
+  useEffect(() => {
+    if (type === "tv" && id) {
+      localStorage.setItem(
+        `last-watched-${id}`,
+        JSON.stringify({ season: selectedSeason, episode: selectedEpisode })
+      );
+    }
+  }, [selectedSeason, selectedEpisode, id, type]);
 
   const handleSeasonChange = (seasonNumber: number) => {
     setSelectedSeason(seasonNumber);
     setSelectedEpisode(1);
   };
 
-  let videoSrc = "";
-  if (type === "movie") {
-    videoSrc = `https://moviesapi.to/movie/${id}`;
-  } else {
-    videoSrc = `https://moviesapi.to/tv/${id}-${selectedSeason}-${selectedEpisode}`;
-  }
+  const toggleWatchlist = () => {
+    if (!details) return;
+    if (inWatchlist) {
+      removeFromWatchlist(details.id);
+    } else {
+      addToWatchlist({ ...details, media_type: type });
+    }
+    setInWatchlist(!inWatchlist);
+  };
+
+  let videoSrc =
+    type === "movie"
+      ? `https://moviesapi.to/movie/${id}`
+      : `https://moviesapi.to/tv/${id}-${selectedSeason}-${selectedEpisode}`;
 
   if (isLoading) {
     return (
@@ -71,15 +105,13 @@ const DetailPage: React.FC<{ type: "movie" | "tv" }> = ({ type }) => {
   if (!details) {
     return (
       <div className="h-screen flex justify-center items-center">
-        <p>Details not found.</p>
+        <p>Movie atau TV Show Tidak Tersedia</p>
       </div>
     );
   }
 
-  // --- START: Desain Ulang Tata Letak ---
   return (
     <div className="relative min-h-screen">
-      {/* 1. Latar Belakang Backdrop dengan Overlay */}
       {details.backdrop_path && (
         <div className="absolute top-0 left-0 w-full h-[60vh] -z-10">
           <img
@@ -91,10 +123,8 @@ const DetailPage: React.FC<{ type: "movie" | "tv" }> = ({ type }) => {
         </div>
       )}
 
-      {/* 2. Konten Utama dengan Tata Letak Grid */}
       <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 pt-24">
         <div className="grid grid-cols-1 lg:grid-cols-3 gap-8 lg:gap-12">
-          {/* Kolom Kiri: Poster dan Info Singkat */}
           <div className="lg:col-span-1 flex flex-col items-center lg:items-start">
             <img
               src={
@@ -105,7 +135,7 @@ const DetailPage: React.FC<{ type: "movie" | "tv" }> = ({ type }) => {
               alt={details.title || details.name}
               className="rounded-lg shadow-2xl w-64 lg:w-full"
             />
-            <div className="mt-4 text-center lg:text-left">
+            <div className="mt-4 text-center lg:text-left w-full">
               <h1 className="text-4xl font-display tracking-wider">
                 {details.title || details.name}
               </h1>
@@ -128,16 +158,28 @@ const DetailPage: React.FC<{ type: "movie" | "tv" }> = ({ type }) => {
                   {details.vote_average?.toFixed(1)}
                 </span>
               </div>
+              <button
+                onClick={toggleWatchlist}
+                className={`mt-4 w-full flex items-center justify-center gap-2 px-6 py-3 rounded-lg font-semibold transition ${
+                  inWatchlist
+                    ? "bg-pink-600 hover:bg-pink-700"
+                    : "bg-brand-surface hover:bg-brand-border"
+                }`}
+              >
+                <Bookmark
+                  size={20}
+                  className={inWatchlist ? "fill-current" : ""}
+                />
+                {inWatchlist ? "Hapus dari Watchlist" : "Tambah ke Watchlist"}
+              </button>
             </div>
           </div>
 
-          {/* Kolom Kanan: Pemutar Video dan Detail Lainnya */}
           <div className="lg:col-span-2">
             <h2 className="text-3xl font-display tracking-wider mb-4">
-              Watch Now
+              Tonton Sekarang
             </h2>
             <VideoPlayer src={videoSrc} />
-
             {type === "tv" && details.seasons && (
               <EpisodeSelector
                 seasons={details.seasons}
@@ -147,20 +189,18 @@ const DetailPage: React.FC<{ type: "movie" | "tv" }> = ({ type }) => {
                 onEpisodeChange={setSelectedEpisode}
               />
             )}
-
             <div className="mt-8">
               <h3 className="text-2xl font-display tracking-wider mb-2">
-                Synopsis
+                Sinopsis
               </h3>
               <p className="text-brand-text-secondary leading-relaxed">
                 {details.overview}
               </p>
             </div>
-
             {details.credits?.cast && details.credits.cast.length > 0 && (
               <div className="mt-8">
                 <h3 className="text-2xl font-display tracking-wider mb-4">
-                  Cast
+                  Pemeran
                 </h3>
                 <div className="flex gap-4 overflow-x-auto pb-4 -mx-4 px-4">
                   {details.credits.cast.slice(0, 10).map((actor) => (
@@ -188,8 +228,6 @@ const DetailPage: React.FC<{ type: "movie" | "tv" }> = ({ type }) => {
             )}
           </div>
         </div>
-
-        {/* 3. Galeri Gambar di Bawah */}
         <div className="mt-12">
           {details.images?.backdrops && details.images.backdrops.length > 0 && (
             <ImageGallery

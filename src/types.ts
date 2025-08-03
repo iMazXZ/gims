@@ -40,6 +40,7 @@ export interface MediaItem {
   first_air_date?: string; // Untuk acara TV
   media_type?: 'movie' | 'tv';
   overview?: string;
+  quality?: string; // Ditambahkan untuk info kualitas
 }
 
 // Tipe untuk detail media yang lebih lengkap dari TMDB
@@ -61,7 +62,6 @@ export interface MediaDetails extends MediaItem {
       [countryCode: string]: WatchProviders;
     };
   };
-  // Tambahkan seasons untuk TV Show
   seasons?: Season[];
 }
 
@@ -89,8 +89,6 @@ export interface PersonCredits {
   cast: MediaItem[];
 }
 
-// --- TIPE BARU UNTUK MOVIESAPI.CLUB & TV SEASONS ---
-
 // Tipe untuk item dari moviesapi.club/api/discover/*
 export interface MoviesApiItem {
   id: number;
@@ -99,6 +97,7 @@ export interface MoviesApiItem {
   orig_title: string;
   year: number;
   type: 'movie' | 'tv';
+  quality?: string; // Ditambahkan untuk info kualitas
 }
 
 // Tipe untuk episode dalam satu season
@@ -120,5 +119,5 @@ export interface Season {
   overview: string;
   poster_path: string;
   season_number: number;
-  episodes?: Episode[]; // Opsional, bisa di-fetch terpisah
+  episodes?: Episode[];
 }

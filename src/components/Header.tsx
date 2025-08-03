@@ -1,6 +1,7 @@
 import React from "react";
 import { Link, useNavigate } from "react-router-dom";
-import { Film, History } from "lucide-react";
+// Impor ikon Bookmark
+import { Film, History, Bookmark } from "lucide-react";
 import SearchForm from "./SearchForm";
 
 const Header: React.FC = () => {
@@ -25,12 +26,20 @@ const Header: React.FC = () => {
           <div className="w-full md:w-72">
             <SearchForm onSearch={handleSearch} />
           </div>
+          {/* Tambahkan tautan ke Watchlist */}
+          <Link
+            to="/watchlist"
+            title="Watchlist"
+            className="p-2.5 rounded-lg hover:bg-brand-surface transition-colors"
+          >
+            <Bookmark size={25} />
+          </Link>
           <Link
             to="/history"
             title="History"
             className="p-2.5 rounded-lg hover:bg-brand-surface transition-colors"
           >
-            <History size={20} />
+            <History size={25} />
           </Link>
         </div>
       </div>
