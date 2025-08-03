@@ -1,29 +1,58 @@
 import React, { useEffect, useState, useCallback } from "react";
 import { Link } from "react-router-dom";
-import { MediaItem, MoviesApiItem } from "../types";
+import { MediaItem } from "../types";
 import { tmdbFetch, moviesApiFetch } from "../api";
 import Hero from "../components/Hero";
 import MediaRow from "../components/MediaRow";
 import { ChevronRight } from "lucide-react";
 
-// Memperbarui nama kategori agar lebih akurat
+// Mendapatkan tahun saat ini secara dinamis
+const currentYear = new Date().getFullYear();
+
+// Memperbarui kategori Drama Asia dengan filter tahun dan popularitas
 const categories = [
-  { title: "Film Populer", endpoint: "/movie/popular", type: "movie" as const },
+  {
+    title: "Film Populer",
+    endpoint: "/movie/popular",
+    type: "movie" as const,
+    params: {},
+  },
   {
     title: "Update Acara TV Terbaru",
     endpoint: "/discover/tv",
     type: "tv" as const,
     source: "moviesapi",
-  }, // Menandai sumber API
-  {
-    title: "Film Rating Tertinggi",
-    endpoint: "/movie/top_rated",
-    type: "movie" as const,
+    params: {},
   },
   {
-    title: "Akan Tayang di Bioskop",
-    endpoint: "/movie/upcoming",
-    type: "movie" as const,
+    title: "Drama Korea Populer Terbaru",
+    endpoint: "/discover/tv",
+    type: "tv" as const,
+    params: {
+      with_origin_country: "KR",
+      first_air_date_year: currentYear,
+      sort_by: "popularity.desc",
+    },
+  },
+  {
+    title: "Drama China Populer Terbaru",
+    endpoint: "/discover/tv",
+    type: "tv" as const,
+    params: {
+      with_origin_country: "CN",
+      first_air_date_year: currentYear,
+      sort_by: "popularity.desc",
+    },
+  },
+  {
+    title: "Drama Thailand Populer Terbaru",
+    endpoint: "/discover/tv",
+    type: "tv" as const,
+    params: {
+      with_origin_country: "TH",
+      first_air_date_year: currentYear,
+      sort_by: "popularity.desc",
+    },
   },
 ];
 
@@ -34,7 +63,6 @@ const HomePage: React.FC = () => {
   );
   const [isLoading, setIsLoading] = useState(true);
 
-  // Fungsi untuk "menghias" data TMDB dengan info kualitas dari moviesapi.club
   const decorateWithQuality = useCallback(
     async (
       items: MediaItem[],
@@ -63,16 +91,14 @@ const HomePage: React.FC = () => {
         setTrendingItems(trendingRes.results);
 
         const categoryPromises = categories.map((cat) => {
-          // Logika baru: Cek sumber API untuk setiap kategori
           if (cat.source === "moviesapi") {
-            // Jika sumbernya moviesapi, ambil dari sana dulu
             return moviesApiFetch(cat.endpoint, {
               ordering: "last_upload_date",
               direction: "desc",
             });
           }
-          // Jika tidak, ambil dari TMDB seperti biasa
-          return tmdbFetch(cat.endpoint);
+          // Menggunakan parameter yang didefinisikan di array kategori
+          return tmdbFetch(cat.endpoint, cat.params);
         });
 
         const allCategoryRes = await Promise.all(categoryPromises);
@@ -83,10 +109,9 @@ const HomePage: React.FC = () => {
           let itemsToDecorate: MediaItem[];
 
           if (cat.source === "moviesapi") {
-            // Jika dari moviesapi, kita perlu mengambil detail TMDB
-            const moviesApiItems: MoviesApiItem[] = allCategoryRes[i].data;
+            const moviesApiItems: any[] = allCategoryRes[i].data;
             const detailPromises = moviesApiItems
-              .slice(0, 9)
+              .slice(0, 10)
               .map(async (item) => {
                 try {
                   const tmdbDetail = await tmdbFetch(
@@ -105,8 +130,7 @@ const HomePage: React.FC = () => {
               (item): item is MediaItem => item !== null
             );
           } else {
-            // Jika dari TMDB, kita hias dengan info kualitas
-            const initialItems = allCategoryRes[i].results.slice(0, 9);
+            const initialItems = allCategoryRes[i].results.slice(0, 10);
             itemsToDecorate = await decorateWithQuality(initialItems, cat.type);
           }
           decoratedData[cat.title] = itemsToDecorate;
@@ -140,8 +164,13 @@ const HomePage: React.FC = () => {
               <h2 className="text-2xl font-display tracking-wider">
                 {cat.title}
               </h2>
+              {/* Tautan "Lihat Semua" akan mengarah ke halaman discover dengan filter negara */}
               <Link
-                to={`/discover/${cat.type}`}
+                to={`/discover/${cat.type}${
+                  cat.params.with_origin_country
+                    ? `?region=${cat.params.with_origin_country}`
+                    : ""
+                }`}
                 className="flex items-center gap-1 text-sm text-brand-text-secondary hover:text-brand-primary transition-colors"
               >
                 Lihat Semua <ChevronRight size={16} />

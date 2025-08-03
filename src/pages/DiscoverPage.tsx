@@ -1,5 +1,5 @@
 import React, { useState, useEffect, useCallback } from "react";
-import { useParams } from "react-router-dom";
+import { useParams, useSearchParams } from "react-router-dom";
 import { MediaItem } from "../types";
 import { tmdbFetch, moviesApiFetch } from "../api";
 import MediaGrid from "../components/MediaGrid";
@@ -7,6 +7,7 @@ import FilterControls, { Filters } from "../components/FilterControls";
 
 const DiscoverPage: React.FC = () => {
   const { type } = useParams<{ type: "movie" | "tv" }>();
+  const [searchParams] = useSearchParams();
   const [items, setItems] = useState<MediaItem[]>([]);
   const [page, setPage] = useState(1);
   const [totalPages, setTotalPages] = useState(0);
@@ -15,10 +16,10 @@ const DiscoverPage: React.FC = () => {
   const [error, setError] = useState<string | null>(null);
 
   const [activeFilters, setActiveFilters] = useState<Filters>({
-    genre: "all",
-    year: "all",
+    genre: searchParams.get("genre") || "all",
+    year: searchParams.get("year") || "all", // Membaca parameter 'year'
     sort_by: "popularity.desc",
-    region: "all",
+    region: searchParams.get("region") || "all", // Membaca parameter 'region'
   });
 
   const decorateWithQuality = useCallback(
@@ -93,14 +94,27 @@ const DiscoverPage: React.FC = () => {
     }
   };
 
-  const title = type === "movie" ? "Jelajahi Film" : "Jelajahi Acara TV";
+  const genreNameFromUrl = searchParams.get("genre_name");
+  const regionNameFromUrl = searchParams.get("region_name");
+  let title = type === "movie" ? "Jelajahi Film" : "Jelajahi Acara TV";
+  if (genreNameFromUrl) {
+    title = `Genre: ${decodeURIComponent(genreNameFromUrl)}`;
+  } else if (regionNameFromUrl) {
+    title = `Wilayah: ${decodeURIComponent(regionNameFromUrl)}`;
+  } else if (activeFilters.year !== "all") {
+    title = `Tahun: ${activeFilters.year}`;
+  }
 
   return (
     <div className="p-4 md:p-8 max-w-7xl mx-auto">
       <h1 className="text-4xl font-display tracking-wider mb-6">{title}</h1>
 
       {type && (
-        <FilterControls mediaType={type} onFilterChange={setActiveFilters} />
+        <FilterControls
+          mediaType={type}
+          activeFilters={activeFilters}
+          onFilterChange={setActiveFilters}
+        />
       )}
 
       {isLoading ? (

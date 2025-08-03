@@ -2,16 +2,18 @@ import React, { useState, useEffect } from "react";
 import { Country, Genre } from "../types";
 import { fetchCountries, fetchGenres } from "../api";
 
-// Definisikan tipe untuk semua filter
+// Tipe untuk semua filter tetap sama
 export interface Filters {
   genre: string;
   year: string;
   sort_by: string;
-  region: string; // Filter baru
+  region: string;
 }
 
 interface FilterControlsProps {
   mediaType: "movie" | "tv";
+  // Menerima filter aktif sebagai prop
+  activeFilters: Filters;
   onFilterChange: (filters: Filters) => void;
 }
 
@@ -27,23 +29,19 @@ const sortOptions = {
 
 const FilterControls: React.FC<FilterControlsProps> = ({
   mediaType,
+  activeFilters,
   onFilterChange,
 }) => {
   const [genres, setGenres] = useState<Genre[]>([]);
   const [countries, setCountries] = useState<Country[]>([]);
-  const [filters, setFilters] = useState<Filters>({
-    genre: "all",
-    year: "all",
-    sort_by: "popularity.desc",
-    region: "all", // Nilai default
-  });
+
+  // Hapus state filter internal
 
   useEffect(() => {
     const getOptions = async () => {
       const genreData = await fetchGenres(mediaType);
       setGenres(genreData.genres);
       const countryData = await fetchCountries();
-      // Urutkan negara berdasarkan nama
       const sortedCountries = countryData.sort((a: Country, b: Country) =>
         a.english_name.localeCompare(b.english_name)
       );
@@ -52,17 +50,17 @@ const FilterControls: React.FC<FilterControlsProps> = ({
     getOptions();
   }, [mediaType]);
 
+  // Fungsi ini sekarang memanggil onFilterChange dengan objek filter yang baru
   const handleFilterChange = (filterName: keyof Filters, value: string) => {
-    const newFilters = { ...filters, [filterName]: value };
-    setFilters(newFilters);
+    const newFilters = { ...activeFilters, [filterName]: value };
     onFilterChange(newFilters);
   };
 
   return (
     <div className="bg-brand-surface p-4 rounded-lg mb-8 flex flex-wrap gap-4 items-center">
-      {/* Filter Negara/Wilayah */}
+      {/* Nilai dropdown sekarang dikontrol oleh prop 'activeFilters' */}
       <select
-        value={filters.region}
+        value={activeFilters.region}
         onChange={(e) => handleFilterChange("region", e.target.value)}
         className="bg-brand-background border border-brand-border rounded-lg p-2 text-sm focus:outline-none focus:ring-2 focus:ring-brand-primary"
       >
@@ -74,9 +72,8 @@ const FilterControls: React.FC<FilterControlsProps> = ({
         ))}
       </select>
 
-      {/* Filter Genre */}
       <select
-        value={filters.genre}
+        value={activeFilters.genre}
         onChange={(e) => handleFilterChange("genre", e.target.value)}
         className="bg-brand-background border border-brand-border rounded-lg p-2 text-sm focus:outline-none focus:ring-2 focus:ring-brand-primary"
       >
@@ -88,9 +85,8 @@ const FilterControls: React.FC<FilterControlsProps> = ({
         ))}
       </select>
 
-      {/* Filter Tahun */}
       <select
-        value={filters.year}
+        value={activeFilters.year}
         onChange={(e) => handleFilterChange("year", e.target.value)}
         className="bg-brand-background border border-brand-border rounded-lg p-2 text-sm focus:outline-none focus:ring-2 focus:ring-brand-primary"
       >
@@ -102,9 +98,8 @@ const FilterControls: React.FC<FilterControlsProps> = ({
         ))}
       </select>
 
-      {/* Sortir */}
       <select
-        value={filters.sort_by}
+        value={activeFilters.sort_by}
         onChange={(e) => handleFilterChange("sort_by", e.target.value)}
         className="bg-brand-background border border-brand-border rounded-lg p-2 text-sm focus:outline-none focus:ring-2 focus:ring-brand-primary"
       >

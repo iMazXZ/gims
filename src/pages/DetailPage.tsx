@@ -164,6 +164,10 @@ ${castInfo || "N/A"}
     );
   }
 
+  const releaseYear = (details.release_date || details.first_air_date)?.split(
+    "-"
+  )[0];
+
   return (
     <div className="relative min-h-screen">
       {details.backdrop_path && (
@@ -194,14 +198,12 @@ ${castInfo || "N/A"}
                 {details.title || details.name}
               </h1>
               <div className="flex flex-wrap justify-center lg:justify-start items-center gap-x-4 gap-y-1 text-brand-text-secondary">
-                <span className="flex items-center gap-1.5">
-                  <Calendar size={14} />{" "}
-                  {
-                    (details.release_date || details.first_air_date)?.split(
-                      "-"
-                    )[0]
-                  }
-                </span>
+                <Link
+                  to={`/discover/${type}?year=${releaseYear}`}
+                  className="flex items-center gap-1.5 hover:text-brand-primary"
+                >
+                  <Calendar size={14} /> {releaseYear}
+                </Link>
                 {details.runtime && (
                   <span className="flex items-center gap-1.5">
                     <Clock size={14} /> {details.runtime} min
@@ -216,22 +218,49 @@ ${castInfo || "N/A"}
                 </span>
               </div>
 
-              {/* Detail dipindahkan ke sini */}
-              <div className="pt-2 text-sm text-brand-text-secondary space-y-1 border-t border-brand-border/50">
-                <p>
+              <div className="flex flex-wrap justify-center lg:justify-start text-sm items-center gap-x-4 gap-y-1 text-brand-text-secondary">
+                <div className="flex flex-wrap items-baseline gap-x-1.5">
                   <strong className="font-semibold text-brand-text-primary/80">
                     Genre:
-                  </strong>{" "}
-                  {details.genres?.map((g) => g.name).join(", ") || "N/A"}
-                </p>
-                <p>
+                  </strong>
+                  <span>
+                    {details.genres?.map((g, index) => (
+                      <React.Fragment key={g.id}>
+                        <Link
+                          to={`/discover/${type}?genre=${
+                            g.id
+                          }&genre_name=${encodeURIComponent(g.name)}`}
+                          className="hover:text-brand-primary hover:underline"
+                        >
+                          {g.name}
+                        </Link>
+                        {index < details.genres.length - 1 ? ", " : ""}
+                      </React.Fragment>
+                    )) || "N/A"}
+                  </span>
+                </div>
+                <div className="flex flex-wrap items-baseline gap-x-1.5">
                   <strong className="font-semibold text-brand-text-primary/80">
-                    Country:
-                  </strong>{" "}
-                  {details.production_countries
-                    ?.map((c) => c.name)
-                    .join(", ") || "N/A"}
-                </p>
+                    Negara:
+                  </strong>
+                  <span>
+                    {details.production_countries?.map((c, index) => (
+                      <React.Fragment key={c.iso_3166_1}>
+                        <Link
+                          to={`/discover/${type}?region=${
+                            c.iso_3166_1
+                          }&region_name=${encodeURIComponent(c.name)}`}
+                          className="hover:text-brand-primary hover:underline"
+                        >
+                          {c.name}
+                        </Link>
+                        {index < details.production_countries.length - 1
+                          ? ", "
+                          : ""}
+                      </React.Fragment>
+                    )) || "N/A"}
+                  </span>
+                </div>
               </div>
 
               <div className="flex flex-col sm:flex-row gap-2 pt-2">
@@ -247,7 +276,7 @@ ${castInfo || "N/A"}
                     size={20}
                     className={inWatchlist ? "fill-current" : ""}
                   />
-                  {inWatchlist ? "Added to Watchlist" : "Watchlist"}
+                  {inWatchlist ? "Added" : "Watchlist"}
                 </button>
                 <button
                   onClick={handleCopyDetails}
@@ -266,7 +295,7 @@ ${castInfo || "N/A"}
 
           <div className="lg:col-span-2">
             <h2 className="text-3xl font-display tracking-wider mb-4">
-              Streaming Now
+              Tonton Sekarang
             </h2>
             <div className="mb-4 p-2 bg-brand-surface rounded-lg flex items-center gap-2">
               <Server
