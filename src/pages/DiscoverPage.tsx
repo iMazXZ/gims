@@ -3,6 +3,7 @@ import { useParams } from "react-router-dom";
 import { MediaItem } from "../types";
 import { tmdbFetch, moviesApiFetch } from "../api";
 import MediaGrid from "../components/MediaGrid";
+import FilterControls, { Filters } from "../components/FilterControls";
 
 const DiscoverPage: React.FC = () => {
   const { type } = useParams<{ type: "movie" | "tv" }>();
@@ -13,7 +14,13 @@ const DiscoverPage: React.FC = () => {
   const [isLoadingMore, setIsLoadingMore] = useState(false);
   const [error, setError] = useState<string | null>(null);
 
-  // Fungsi untuk menghias data TMDB dengan info kualitas
+  const [activeFilters, setActiveFilters] = useState<Filters>({
+    genre: "all",
+    year: "all",
+    sort_by: "popularity.desc",
+    region: "all",
+  });
+
   const decorateWithQuality = useCallback(
     async (
       tmdbItems: MediaItem[],
@@ -27,10 +34,6 @@ const DiscoverPage: React.FC = () => {
           const quality = qualityRes.data[0]?.quality || null;
           return { ...item, quality, media_type: mediaType };
         } catch (e) {
-          console.warn(
-            `Tidak dapat mengambil info kualitas untuk ${mediaType} ID ${item.id}`,
-            e
-          );
           return { ...item, media_type: mediaType };
         }
       });
@@ -40,26 +43,31 @@ const DiscoverPage: React.FC = () => {
   );
 
   const fetchItems = useCallback(
-    async (fetchPage: number) => {
+    async (fetchPage: number, filters: Filters) => {
       if (!type) return;
       if (fetchPage === 1) setIsLoading(true);
       else setIsLoadingMore(true);
       setError(null);
 
-      try {
-        // 1. Ambil daftar dari TMDB
-        const data = await tmdbFetch(`/discover/${type}`, {
-          sort_by: "popularity.desc",
-          page: String(fetchPage),
-        });
+      const params: Record<string, string | number> = {
+        sort_by: filters.sort_by,
+        page: fetchPage,
+      };
+      if (filters.genre !== "all") params.with_genres = filters.genre;
+      if (filters.year !== "all") {
+        if (type === "movie") params.primary_release_year = filters.year;
+        if (type === "tv") params.first_air_date_year = filters.year;
+      }
+      if (filters.region !== "all") params.with_origin_country = filters.region;
 
-        // 2. Hias dengan info kualitas
+      try {
+        const data = await tmdbFetch(`/discover/${type}`, params);
         const decoratedItems = await decorateWithQuality(data.results, type);
 
         setItems((prev) =>
           fetchPage === 1 ? decoratedItems : [...prev, ...decoratedItems]
         );
-        setTotalPages(data.total_pages);
+        setTotalPages(data.total_pages > 500 ? 500 : data.total_pages);
       } catch (err) {
         setError("Gagal memuat konten. Silakan coba lagi.");
         console.error(err);
@@ -74,14 +82,14 @@ const DiscoverPage: React.FC = () => {
   useEffect(() => {
     setItems([]);
     setPage(1);
-    fetchItems(1);
-  }, [fetchItems]);
+    fetchItems(1, activeFilters);
+  }, [type, activeFilters, fetchItems]);
 
   const handleLoadMore = () => {
     if (page < totalPages) {
       const nextPage = page + 1;
       setPage(nextPage);
-      fetchItems(nextPage);
+      fetchItems(nextPage, activeFilters);
     }
   };
 
@@ -90,6 +98,11 @@ const DiscoverPage: React.FC = () => {
   return (
     <div className="p-4 md:p-8 max-w-7xl mx-auto">
       <h1 className="text-4xl font-display tracking-wider mb-6">{title}</h1>
+
+      {type && (
+        <FilterControls mediaType={type} onFilterChange={setActiveFilters} />
+      )}
+
       {isLoading ? (
         <p>Memuat...</p>
       ) : error ? (
@@ -97,7 +110,7 @@ const DiscoverPage: React.FC = () => {
       ) : (
         <>
           <MediaGrid items={items} />
-          {page < totalPages && (
+          {items.length > 0 && page < totalPages && (
             <div className="text-center mt-8">
               <button
                 onClick={handleLoadMore}
@@ -107,6 +120,9 @@ const DiscoverPage: React.FC = () => {
                 {isLoadingMore ? "Memuat..." : "Muat Lebih Banyak"}
               </button>
             </div>
+          )}
+          {items.length === 0 && !isLoading && (
+            <p>Tidak ada hasil yang cocok dengan filter Anda.</p>
           )}
         </>
       )}

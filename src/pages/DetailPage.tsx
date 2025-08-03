@@ -1,26 +1,31 @@
 import React, { useEffect, useState } from "react";
 import { Link, useParams } from "react-router-dom";
 import { MediaDetails } from "../types";
-// Impor VIDSRC_EMBED_URL
 import { tmdbFetch, VIDSRC_EMBED_URL } from "../api";
 import EpisodeSelector from "../components/EpisodeSelector";
 import ImageGallery from "../components/ImageGallery";
-// Impor ikon Server, Bookmark, dll.
-import { Calendar, Clock, Star, Bookmark, Server } from "lucide-react";
+import {
+  Calendar,
+  Clock,
+  Star,
+  Bookmark,
+  Server,
+  Copy,
+  Check,
+  Hash,
+} from "lucide-react";
 import {
   addToWatchlist,
   removeFromWatchlist,
   isInWatchlist,
 } from "../utils/watchlist";
 
-// Tipe untuk server yang tersedia
 type StreamingServer = "moviesapi" | "vidsrc";
 
 const VideoPlayer: React.FC<{ src: string }> = ({ src }) => {
   return (
     <div className="aspect-video bg-black rounded-lg overflow-hidden shadow-2xl shadow-brand-primary/20">
       <iframe
-        // Tambahkan key untuk memaksa iframe memuat ulang saat src berubah
         key={src}
         src={src}
         className="w-full h-full"
@@ -37,11 +42,10 @@ const DetailPage: React.FC<{ type: "movie" | "tv" }> = ({ type }) => {
   const [details, setDetails] = useState<MediaDetails | null>(null);
   const [isLoading, setIsLoading] = useState(true);
   const [inWatchlist, setInWatchlist] = useState(false);
+  const [isCopied, setIsCopied] = useState(false);
 
   const [selectedSeason, setSelectedSeason] = useState(1);
   const [selectedEpisode, setSelectedEpisode] = useState(1);
-
-  // State baru untuk mengelola server yang dipilih, defaultnya diubah ke 'vidsrc'
   const [selectedServer, setSelectedServer] =
     useState<StreamingServer>("vidsrc");
 
@@ -97,7 +101,38 @@ const DetailPage: React.FC<{ type: "movie" | "tv" }> = ({ type }) => {
     setInWatchlist(!inWatchlist);
   };
 
-  // Logika untuk membuat URL video berdasarkan server yang dipilih
+  const handleCopyDetails = () => {
+    if (!details) return;
+
+    const castInfo = details.credits?.cast
+      .slice(0, 10)
+      .map((actor) => `${actor.name} as ${actor.character}`)
+      .join("\n");
+
+    const detailsText = `
+${(details.title || details.name)?.toUpperCase()} (${
+      (details.release_date || details.first_air_date)?.split("-")[0] || "N/A"
+    })
+
+Synopsis:
+${details.overview || "N/A"}
+Country: ${details.production_countries?.map((c) => c.name).join(", ") || "N/A"}
+Genre: ${details.genres?.map((g) => g.name).join(", ") || "N/A"}
+Duration: ${details.runtime ? `${details.runtime} min` : "N/A"}
+Rating: ${
+      details.vote_average ? `${details.vote_average.toFixed(1)}/10` : "N/A"
+    }
+
+Cast:
+${castInfo || "N/A"}
+    `.trim();
+
+    navigator.clipboard.writeText(detailsText).then(() => {
+      setIsCopied(true);
+      setTimeout(() => setIsCopied(false), 2000);
+    });
+  };
+
   const getVideoSrc = (): string => {
     if (!id) return "";
     if (selectedServer === "moviesapi") {
@@ -106,7 +141,6 @@ const DetailPage: React.FC<{ type: "movie" | "tv" }> = ({ type }) => {
         : `https://moviesapi.to/tv/${id}-${selectedSeason}-${selectedEpisode}`;
     }
     if (selectedServer === "vidsrc") {
-      // Tambahkan parameter ds_lang=id untuk subtitle Bahasa Indonesia
       return type === "movie"
         ? `${VIDSRC_EMBED_URL}/movie?tmdb=${id}&ds_lang=id`
         : `${VIDSRC_EMBED_URL}/tv?tmdb=${id}&season=${selectedSeason}&episode=${selectedEpisode}&ds_lang=id`;
@@ -155,11 +189,11 @@ const DetailPage: React.FC<{ type: "movie" | "tv" }> = ({ type }) => {
               alt={details.title || details.name}
               className="rounded-lg shadow-2xl w-64 lg:w-full"
             />
-            <div className="mt-4 text-center lg:text-left w-full">
+            <div className="mt-4 text-center lg:text-left w-full space-y-3">
               <h1 className="text-4xl font-display tracking-wider">
                 {details.title || details.name}
               </h1>
-              <div className="flex flex-wrap justify-center lg:justify-start items-center gap-x-4 gap-y-1 mt-2 text-brand-text-secondary">
+              <div className="flex flex-wrap justify-center lg:justify-start items-center gap-x-4 gap-y-1 text-brand-text-secondary">
                 <span className="flex items-center gap-1.5">
                   <Calendar size={14} />{" "}
                   {
@@ -177,30 +211,63 @@ const DetailPage: React.FC<{ type: "movie" | "tv" }> = ({ type }) => {
                   <Star size={14} className="fill-current" />{" "}
                   {details.vote_average?.toFixed(1)}
                 </span>
+                <span className="flex items-center gap-1.5 text-red-400">
+                  <Hash size={14} className="fill-current" /> {details.id}
+                </span>
               </div>
-              <button
-                onClick={toggleWatchlist}
-                className={`mt-4 w-full flex items-center justify-center gap-2 px-6 py-3 rounded-lg font-semibold transition ${
-                  inWatchlist
-                    ? "bg-pink-600 hover:bg-pink-700"
-                    : "bg-brand-surface hover:bg-brand-border"
-                }`}
-              >
-                <Bookmark
-                  size={20}
-                  className={inWatchlist ? "fill-current" : ""}
-                />
-                {inWatchlist ? "Hapus dari Watchlist" : "Tambah ke Watchlist"}
-              </button>
+
+              {/* Detail dipindahkan ke sini */}
+              <div className="pt-2 text-sm text-brand-text-secondary space-y-1 border-t border-brand-border/50">
+                <p>
+                  <strong className="font-semibold text-brand-text-primary/80">
+                    Genre:
+                  </strong>{" "}
+                  {details.genres?.map((g) => g.name).join(", ") || "N/A"}
+                </p>
+                <p>
+                  <strong className="font-semibold text-brand-text-primary/80">
+                    Country:
+                  </strong>{" "}
+                  {details.production_countries
+                    ?.map((c) => c.name)
+                    .join(", ") || "N/A"}
+                </p>
+              </div>
+
+              <div className="flex flex-col sm:flex-row gap-2 pt-2">
+                <button
+                  onClick={toggleWatchlist}
+                  className={`w-full flex items-center justify-center gap-2 px-6 py-3 rounded-lg font-semibold transition ${
+                    inWatchlist
+                      ? "bg-pink-600 hover:bg-pink-700"
+                      : "bg-brand-surface hover:bg-brand-border"
+                  }`}
+                >
+                  <Bookmark
+                    size={20}
+                    className={inWatchlist ? "fill-current" : ""}
+                  />
+                  {inWatchlist ? "Added to Watchlist" : "Watchlist"}
+                </button>
+                <button
+                  onClick={handleCopyDetails}
+                  className={`w-full flex items-center justify-center gap-2 px-6 py-3 rounded-lg font-semibold transition ${
+                    isCopied
+                      ? "bg-green-500 text-white"
+                      : "bg-brand-surface hover:bg-brand-border"
+                  }`}
+                >
+                  {isCopied ? <Check size={20} /> : <Copy size={20} />}
+                  {isCopied ? "Tersalin!" : "Salin Info"}
+                </button>
+              </div>
             </div>
           </div>
 
           <div className="lg:col-span-2">
             <h2 className="text-3xl font-display tracking-wider mb-4">
-              Tonton Sekarang
+              Streaming Now
             </h2>
-
-            {/* Komponen Pilihan Server */}
             <div className="mb-4 p-2 bg-brand-surface rounded-lg flex items-center gap-2">
               <Server
                 size={18}
@@ -227,9 +294,7 @@ const DetailPage: React.FC<{ type: "movie" | "tv" }> = ({ type }) => {
                 Server 2
               </button>
             </div>
-
             <VideoPlayer src={getVideoSrc()} />
-
             {type === "tv" && details.seasons && (
               <EpisodeSelector
                 seasons={details.seasons}
@@ -239,6 +304,7 @@ const DetailPage: React.FC<{ type: "movie" | "tv" }> = ({ type }) => {
                 onEpisodeChange={setSelectedEpisode}
               />
             )}
+
             <div className="mt-8">
               <h3 className="text-2xl font-display tracking-wider mb-2">
                 Sinopsis

@@ -43,6 +43,11 @@ export interface MediaItem {
   quality?: string; // Ditambahkan untuk info kualitas
 }
 
+export interface ProductionCountry {
+  iso_3166_1: string;
+  name: string;
+}
+
 // Tipe untuk detail media yang lebih lengkap dari TMDB
 export interface MediaDetails extends MediaItem {
   runtime?: number; // Durasi film
@@ -62,6 +67,7 @@ export interface MediaDetails extends MediaItem {
       [countryCode: string]: WatchProviders;
     };
   };
+  production_countries?: ProductionCountry[]; // Ditambahkan
   seasons?: Season[];
 }
 
@@ -120,4 +126,16 @@ export interface Season {
   poster_path: string;
   season_number: number;
   episodes?: Episode[];
+}
+
+export interface Genre {
+  id: number;
+  name: string;
+}
+
+// --- TIPE BARU UNTUK NEGARA ---
+export interface Country {
+  iso_3166_1: string;
+  english_name: string;
+  native_name: string;
 }
