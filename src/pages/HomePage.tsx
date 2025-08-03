@@ -111,7 +111,7 @@ const HomePage: React.FC = () => {
           if (cat.source === "moviesapi") {
             const moviesApiItems: any[] = allCategoryRes[i].data;
             const detailPromises = moviesApiItems
-              .slice(0, 10)
+              .slice(0, 9)
               .map(async (item) => {
                 try {
                   const tmdbDetail = await tmdbFetch(
@@ -130,7 +130,7 @@ const HomePage: React.FC = () => {
               (item): item is MediaItem => item !== null
             );
           } else {
-            const initialItems = allCategoryRes[i].results.slice(0, 10);
+            const initialItems = allCategoryRes[i].results.slice(0, 9);
             itemsToDecorate = await decorateWithQuality(initialItems, cat.type);
           }
           decoratedData[cat.title] = itemsToDecorate;
