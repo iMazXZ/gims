@@ -22,7 +22,7 @@ const DetailCard: React.FC<{ details: MediaDetails }> = ({ details }) => {
   const trailer = details.videos?.results.find(
     (v) => v.type === "Trailer" && v.site === "YouTube"
   );
-  const providers = details["watch/providers"]?.results.ID;
+  const providers = details["watch/providers"]?.results?.ID;
 
   useEffect(() => {
     const savedHistory = localStorage.getItem("movieTvHistory");
