@@ -1,33 +1,54 @@
 import React, { useEffect, useState, useCallback } from "react";
 import { Link } from "react-router-dom";
-import { MediaItem } from "../types";
+import { MediaItem, MoviesApiItem } from "../types";
 import { tmdbFetch, moviesApiFetch } from "../api";
 import Hero from "../components/Hero";
 import MediaRow from "../components/MediaRow";
 import { ChevronRight } from "lucide-react";
 
-// Mendapatkan tahun saat ini secara dinamis
 const currentYear = new Date().getFullYear();
 
-// Memperbarui kategori Drama Asia dengan filter tahun dan popularitas
-const categories = [
+type CategoryParams = {
+  with_origin_country?: string;
+  first_air_date_year?: number;
+  sort_by?: string;
+};
+
+// Mendefinisikan tipe yang lebih ketat untuk kategori
+const categories: {
+  title: string;
+  endpoint: string;
+  type: "movie" | "tv";
+  source?: string;
+  params: CategoryParams;
+  ordering?: "upload_date" | "last_upload_date"; // Properti untuk ordering API
+}[] = [
   {
-    title: "Film Populer",
-    endpoint: "/movie/popular",
-    type: "movie" as const,
-    params: {},
-  },
-  {
-    title: "Update Acara TV Terbaru",
-    endpoint: "/discover/tv",
-    type: "tv" as const,
+    title: "Latest Movie",
+    endpoint: "/discover/movie",
+    type: "movie",
     source: "moviesapi",
     params: {},
+    ordering: "upload_date",
   },
   {
-    title: "Drama Korea Populer Terbaru",
+    title: "Latest TV Show",
     endpoint: "/discover/tv",
-    type: "tv" as const,
+    type: "tv",
+    source: "moviesapi",
+    params: {},
+    ordering: "last_upload_date",
+  },
+  {
+    title: "Film Populer", // Baris baru ditambahkan
+    endpoint: "/movie/popular",
+    type: "movie",
+    params: {}, // Tanpa 'source' akan otomatis mengambil dari TMDB
+  },
+  {
+    title: "Drama Korea",
+    endpoint: "/discover/tv",
+    type: "tv",
     params: {
       with_origin_country: "KR",
       first_air_date_year: currentYear,
@@ -35,9 +56,9 @@ const categories = [
     },
   },
   {
-    title: "Drama China Populer Terbaru",
+    title: "Drama China",
     endpoint: "/discover/tv",
-    type: "tv" as const,
+    type: "tv",
     params: {
       with_origin_country: "CN",
       first_air_date_year: currentYear,
@@ -45,9 +66,9 @@ const categories = [
     },
   },
   {
-    title: "Drama Thailand Populer Terbaru",
+    title: "Drama Thailand",
     endpoint: "/discover/tv",
-    type: "tv" as const,
+    type: "tv",
     params: {
       with_origin_country: "TH",
       first_air_date_year: currentYear,
@@ -75,7 +96,7 @@ const HomePage: React.FC = () => {
           });
           const quality = qualityRes.data[0]?.quality || null;
           return { ...item, quality, media_type: mediaType };
-        } catch (e) {
+        } catch {
           return { ...item, media_type: mediaType };
         }
       });
@@ -92,12 +113,12 @@ const HomePage: React.FC = () => {
 
         const categoryPromises = categories.map((cat) => {
           if (cat.source === "moviesapi") {
+            // Menggunakan properti 'ordering' yang dinamis
             return moviesApiFetch(cat.endpoint, {
-              ordering: "last_upload_date",
+              ordering: cat.ordering,
               direction: "desc",
             });
           }
-          // Menggunakan parameter yang didefinisikan di array kategori
           return tmdbFetch(cat.endpoint, cat.params);
         });
 
@@ -109,9 +130,9 @@ const HomePage: React.FC = () => {
           let itemsToDecorate: MediaItem[];
 
           if (cat.source === "moviesapi") {
-            const moviesApiItems: any[] = allCategoryRes[i].data;
+            const moviesApiItems: MoviesApiItem[] = allCategoryRes[i].data;
             const detailPromises = moviesApiItems
-              .slice(0, 9)
+              .slice(0, 10)
               .map(async (item) => {
                 try {
                   const tmdbDetail = await tmdbFetch(
@@ -130,7 +151,7 @@ const HomePage: React.FC = () => {
               (item): item is MediaItem => item !== null
             );
           } else {
-            const initialItems = allCategoryRes[i].results.slice(0, 9);
+            const initialItems = allCategoryRes[i].results.slice(0, 10);
             itemsToDecorate = await decorateWithQuality(initialItems, cat.type);
           }
           decoratedData[cat.title] = itemsToDecorate;
@@ -164,7 +185,6 @@ const HomePage: React.FC = () => {
               <h2 className="text-2xl font-display tracking-wider">
                 {cat.title}
               </h2>
-              {/* Tautan "Lihat Semua" akan mengarah ke halaman discover dengan filter negara */}
               <Link
                 to={`/discover/${cat.type}${
                   cat.params.with_origin_country

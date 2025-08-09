@@ -1,9 +1,10 @@
-import React, { useEffect, useState } from "react";
+import React, { useEffect, useState, useCallback } from "react";
 import { Link, useParams } from "react-router-dom";
-import { MediaDetails } from "../types";
-import { tmdbFetch, VIDSRC_EMBED_URL } from "../api";
-import EpisodeSelector from "../components/EpisodeSelector";
+import { MediaDetails, MediaItem } from "../types";
+import { tmdbFetch, VIDSRC_EMBED_URL, moviesApiFetch } from "../api";
+import EpisodeGuide from "../components/EpisodeGuide";
 import ImageGallery from "../components/ImageGallery";
+import MediaRow from "../components/MediaRow";
 import {
   Calendar,
   Clock,
@@ -43,22 +44,59 @@ const DetailPage: React.FC<{ type: "movie" | "tv" }> = ({ type }) => {
   const [isLoading, setIsLoading] = useState(true);
   const [inWatchlist, setInWatchlist] = useState(false);
   const [isCopied, setIsCopied] = useState(false);
+  const [recommendations, setRecommendations] = useState<MediaItem[]>([]);
 
   const [selectedSeason, setSelectedSeason] = useState(1);
   const [selectedEpisode, setSelectedEpisode] = useState(1);
   const [selectedServer, setSelectedServer] =
     useState<StreamingServer>("vidsrc");
 
+  const decorateWithQuality = useCallback(
+    async (
+      items: MediaItem[],
+      mediaType: "movie" | "tv"
+    ): Promise<MediaItem[]> => {
+      const qualityPromises = items.map(async (item) => {
+        try {
+          const qualityRes = await moviesApiFetch(`/discover/${mediaType}`, {
+            tmdbid: String(item.id),
+          });
+          const quality = qualityRes.data[0]?.quality || null;
+          return { ...item, quality, media_type: mediaType };
+        } catch (e) {
+          return { ...item, media_type: mediaType };
+        }
+      });
+      return Promise.all(qualityPromises);
+    },
+    []
+  );
+
   useEffect(() => {
     const fetchAllDetails = async () => {
       if (!id) return;
       setIsLoading(true);
+      setRecommendations([]); // Reset rekomendasi saat ID berubah
       try {
-        const data = await tmdbFetch(`/${type}/${id}`, {
-          append_to_response: "videos,credits,watch/providers,images",
-        });
+        // Ambil detail utama dan rekomendasi secara bersamaan
+        const [data, recsData] = await Promise.all([
+          tmdbFetch(`/${type}/${id}`, {
+            append_to_response: "videos,credits,watch/providers,images",
+          }),
+          tmdbFetch(`/${type}/${id}/recommendations`),
+        ]);
+
         setDetails(data);
         setInWatchlist(isInWatchlist(Number(id)));
+
+        // Hias data rekomendasi dengan info kualitas
+        if (recsData?.results) {
+          const decoratedRecs = await decorateWithQuality(
+            recsData.results,
+            type
+          );
+          setRecommendations(decoratedRecs);
+        }
 
         if (type === "tv") {
           const lastWatched = localStorage.getItem(`last-watched-${id}`);
@@ -75,7 +113,7 @@ const DetailPage: React.FC<{ type: "movie" | "tv" }> = ({ type }) => {
       }
     };
     fetchAllDetails();
-  }, [id, type]);
+  }, [id, type, decorateWithQuality]);
 
   useEffect(() => {
     if (type === "tv" && id) {
@@ -159,7 +197,7 @@ ${castInfo || "N/A"}
   if (!details) {
     return (
       <div className="h-screen flex justify-center items-center">
-        <p>Detail tidak ditemukan.</p>
+        <p>Movie atau TV Show Tidak Tersedia.</p>
       </div>
     );
   }
@@ -324,11 +362,13 @@ ${castInfo || "N/A"}
               </button>
             </div>
             <VideoPlayer src={getVideoSrc()} />
-            {type === "tv" && details.seasons && (
-              <EpisodeSelector
+            {/* Menggunakan komponen EpisodeGuide yang baru */}
+            {type === "tv" && details.seasons && id && (
+              <EpisodeGuide
+                tvId={id}
                 seasons={details.seasons}
-                selectedSeason={selectedSeason}
-                selectedEpisode={selectedEpisode}
+                currentSeasonNumber={selectedSeason}
+                currentEpisodeNumber={selectedEpisode}
                 onSeasonChange={handleSeasonChange}
                 onEpisodeChange={setSelectedEpisode}
               />
@@ -373,6 +413,17 @@ ${castInfo || "N/A"}
             )}
           </div>
         </div>
+
+        {/* Bagian Rekomendasi Baru */}
+        {recommendations.length > 0 && (
+          <div className="mt-12">
+            <h2 className="text-3xl font-display tracking-wider mb-4">
+              Rekomendasi
+            </h2>
+            <MediaRow items={recommendations} />
+          </div>
+        )}
+
         <div className="mt-12">
           {details.images?.backdrops && details.images.backdrops.length > 0 && (
             <ImageGallery

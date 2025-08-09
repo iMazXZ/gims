@@ -54,6 +54,12 @@ export const fetchGenres = async (mediaType: 'movie' | 'tv'): Promise<any> => {
  * Mengambil daftar negara dari TMDB.
  */
 export const fetchCountries = async (): Promise<any> => {
-  // Menambahkan parameter language=en-US untuk memastikan nama negara dalam Bahasa Inggris
   return tmdbFetch(`/configuration/countries`, { language: 'en-US' });
+};
+
+/**
+ * Mengambil detail musim (season) acara TV dari TMDB.
+ */
+export const fetchTvSeason = async (tvId: string, seasonNumber: number) => {
+  return tmdbFetch(`/tv/${tvId}/season/${seasonNumber}`);
 };

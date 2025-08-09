@@ -40,7 +40,9 @@ export interface MediaItem {
   first_air_date?: string; // Untuk acara TV
   media_type?: 'movie' | 'tv';
   overview?: string;
-  quality?: string; // Ditambahkan untuk info kualitas
+  quality?: string;
+  genre_ids?: number[];
+  origin_country?: string[];
 }
 
 export interface ProductionCountry {
