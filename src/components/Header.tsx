@@ -37,6 +37,12 @@ const Header: React.FC = () => {
             <NavLink to="/discover/tv" className={navLinkClass}>
               Acara TV
             </NavLink>
+            <a
+              href="/tools.html"
+              className="pb-1 border-b-2 border-transparent text-brand-text-secondary hover:text-brand-text-primary transition-colors"
+            >
+              Tools
+            </a>
           </nav>
         </div>
         <div className="w-full md:w-auto flex items-center gap-2">
