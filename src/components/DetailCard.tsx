@@ -1,11 +1,10 @@
 import React, { useState, useEffect } from "react";
 import { Link } from "react-router-dom";
-import { MediaDetails } from "../types";
+import { MediaDetails, HistoryItem } from "../types";
 import {
   Star,
   Calendar,
   Clock,
-  Users,
   PlayCircle,
   Globe,
   Copy,
@@ -26,7 +25,7 @@ const DetailCard: React.FC<{ details: MediaDetails }> = ({ details }) => {
 
   useEffect(() => {
     const savedHistory = localStorage.getItem("movieTvHistory");
-    const history = savedHistory ? JSON.parse(savedHistory) : [];
+    const history: HistoryItem[] = savedHistory ? JSON.parse(savedHistory) : [];
     const newItem = {
       id: details.id,
       title: isMovie ? details.title : details.name,
@@ -37,7 +36,7 @@ const DetailCard: React.FC<{ details: MediaDetails }> = ({ details }) => {
     };
     const newHistory = [
       newItem,
-      ...history.filter((item: any) => item.id !== newItem.id),
+      ...history.filter((item) => item.id !== newItem.id),
     ].slice(0, 20);
     localStorage.setItem("movieTvHistory", JSON.stringify(newHistory));
   }, [details, isMovie]);
@@ -45,9 +44,9 @@ const DetailCard: React.FC<{ details: MediaDetails }> = ({ details }) => {
   const copyDetails = () => {
     // Menyiapkan daftar pemeran untuk disalin
     const castInfo = details.credits?.cast
-      .slice(0, 5) // Ambil 5 pemeran utama
-      .map((actor) => `${actor.name} as ${actor.character}`)
-      .join("\n"); // Pisahkan dengan baris baru
+      ?.slice(0, 5) // Ambil 5 pemeran utama
+      ?.map((actor) => `${actor.name} as ${actor.character}`)
+      ?.join("\n"); // Pisahkan dengan baris baru
 
     const title = (isMovie ? details.title : details.name) || "";
     const detailsText = `

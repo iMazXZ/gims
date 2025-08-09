@@ -1,7 +1,6 @@
 import React from "react";
 import { Link } from "react-router-dom";
 import { MediaItem } from "../types";
-import { Film, Tv } from "lucide-react";
 
 interface MediaRowProps {
   title: string;

@@ -7,7 +7,6 @@ interface SearchFormProps {
 
 const SearchForm: React.FC<SearchFormProps> = ({ onSearch }) => {
   const [query, setQuery] = useState("");
-  const type = "multi"; // Tipe pencarian bisa disederhanakan untuk header
 
   const handleSubmit = (e: React.FormEvent) => {
     e.preventDefault();

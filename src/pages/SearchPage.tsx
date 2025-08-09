@@ -20,8 +20,8 @@ const SearchPage: React.FC = () => {
       try {
         const data = await apiFetch(`/search/multi`, { query });
         setResults(
-          data.results.filter(
-            (r: any) => r.media_type === "movie" || r.media_type === "tv"
+          (data.results as SearchResult[]).filter(
+            (r) => r.media_type === "movie" || r.media_type === "tv"
           )
         );
       } catch (error) {

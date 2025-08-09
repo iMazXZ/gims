@@ -64,7 +64,7 @@ export interface MediaDetails extends MediaItem {
 }
 
 // Tipe untuk hasil pencarian
-export interface SearchResult extends MediaItem {}
+export type SearchResult = MediaItem;
 
 // Tipe untuk item di riwayat
 export interface HistoryItem extends MediaItem {

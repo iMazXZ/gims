@@ -1,6 +1,6 @@
 import React from "react";
 import { Link } from "react-router-dom";
-import { Film, Tv, Calendar } from "lucide-react";
+import { Calendar } from "lucide-react";
 import { SearchResult } from "../types";
 
 interface SearchResultsProps {
