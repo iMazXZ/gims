@@ -1,7 +1,8 @@
 import React, { useEffect, useState } from "react";
 import { useParams } from "react-router-dom";
 import { PersonDetails, PersonCredits } from "../types";
-import { apiFetch } from "../api";
+// FIXED: Mengimpor 'tmdbFetch' yang benar, bukan 'apiFetch'
+import { tmdbFetch } from "../api";
 import MediaRow from "../components/MediaRow";
 
 const PersonPage: React.FC = () => {
@@ -15,9 +16,10 @@ const PersonPage: React.FC = () => {
       if (!id) return;
       setIsLoading(true);
       try {
+        // FIXED: Menggunakan tmdbFetch untuk mengambil data dari TMDB
         const [personRes, creditsRes] = await Promise.all([
-          apiFetch(`/person/${id}`),
-          apiFetch(`/person/${id}/combined_credits`),
+          tmdbFetch(`/person/${id}`),
+          tmdbFetch(`/person/${id}/combined_credits`),
         ]);
         setPerson(personRes);
         setCredits(creditsRes);
@@ -54,7 +56,7 @@ const PersonPage: React.FC = () => {
             src={
               person.profile_path
                 ? `https://image.tmdb.org/t/p/w500${person.profile_path}`
-                : "/placeholder.png"
+                : "https://placehold.co/500x750/161B22/7D8590?text=No+Image"
             }
             alt={person.name}
             className="rounded-lg w-full"

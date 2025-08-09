@@ -9,7 +9,7 @@ export interface Video {
 
 // Tipe untuk data pemeran
 export interface CastMember {
-  id:number;
+  id: number;
   name: string;
   character: string;
   profile_path: string | null;
@@ -28,7 +28,7 @@ export interface WatchProviders {
   buy?: WatchProvider[];
 }
 
-// Tipe dasar untuk film atau acara TV
+// Tipe dasar untuk film atau acara TV dari TMDB
 export interface MediaItem {
   id: number;
   title?: string; // Untuk film
@@ -40,9 +40,17 @@ export interface MediaItem {
   first_air_date?: string; // Untuk acara TV
   media_type?: 'movie' | 'tv';
   overview?: string;
+  quality?: string;
+  genre_ids?: number[];
+  origin_country?: string[];
 }
 
-// Tipe untuk detail media yang lebih lengkap
+export interface ProductionCountry {
+  iso_3166_1: string;
+  name: string;
+}
+
+// Tipe untuk detail media yang lebih lengkap dari TMDB
 export interface MediaDetails extends MediaItem {
   runtime?: number; // Durasi film
   genres: { id: number; name: string }[];
@@ -61,6 +69,8 @@ export interface MediaDetails extends MediaItem {
       [countryCode: string]: WatchProviders;
     };
   };
+  production_countries?: ProductionCountry[]; // Ditambahkan
+  seasons?: Season[];
 }
 
 // Tipe untuk hasil pencarian
@@ -85,4 +95,49 @@ export interface PersonDetails {
 // Tipe untuk kredit film/TV seorang aktor
 export interface PersonCredits {
   cast: MediaItem[];
+}
+
+// Tipe untuk item dari moviesapi.club/api/discover/*
+export interface MoviesApiItem {
+  id: number;
+  imdb_id: string;
+  tmdbid: string;
+  orig_title: string;
+  year: number;
+  type: 'movie' | 'tv';
+  quality?: string; // Ditambahkan untuk info kualitas
+}
+
+// Tipe untuk episode dalam satu season
+export interface Episode {
+  air_date: string;
+  episode_number: number;
+  id: number;
+  name: string;
+  overview: string;
+  still_path: string | null;
+}
+
+// Tipe untuk detail satu season
+export interface Season {
+  air_date: string;
+  episode_count: number;
+  id: number;
+  name: string;
+  overview: string;
+  poster_path: string;
+  season_number: number;
+  episodes?: Episode[];
+}
+
+export interface Genre {
+  id: number;
+  name: string;
+}
+
+// --- TIPE BARU UNTUK NEGARA ---
+export interface Country {
+  iso_3166_1: string;
+  english_name: string;
+  native_name: string;
 }
